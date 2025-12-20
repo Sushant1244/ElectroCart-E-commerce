@@ -5,11 +5,13 @@ import { resolveImageSrc } from '../utils/resolveImage';
 
 export default function ProductPage(){
   const { slug } = useParams();
-  const [product, setProduct] = useState(null);
+  const [product, setProduct] = useState(undefined);
 
   useEffect(()=> {
-    let cancelled = false;
-    API.get(`/products/${slug}`).then(res => { if (!cancelled) setProduct(res.data); }).catch(err => {
+  let cancelled = false;
+  // indicate loading state
+  setProduct(undefined);
+  API.get(`/products/${slug}`).then(res => { if (!cancelled) setProduct(res.data); }).catch(err => {
       console.error(err);
       if (!cancelled) setProduct(null);
     });
