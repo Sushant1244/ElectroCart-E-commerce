@@ -5,12 +5,14 @@ import { resolveImageSrc } from '../utils/resolveImage';
 
 export default function ProductPage(){
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(undefined);
 
   useEffect(()=> {
   let cancelled = false;
   // indicate loading state
   setProduct(undefined);
+  if (!slug) { navigate('/'); return; }
   API.get(`/products/${slug}`).then(res => { if (!cancelled) setProduct(res.data); }).catch(err => {
     // fallback map (also used for demo/offline product rendering)
     const FALLBACK = {

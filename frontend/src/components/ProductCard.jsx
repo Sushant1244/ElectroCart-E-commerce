@@ -39,7 +39,7 @@ export default function ProductCard({ p }) {
   return (
   <div className="product-card">
       {p.featured && <span className="featured-badge">⭐ Featured</span>}
-      <Link to={`/product/${p.slug}`}>
+  <Link to={`/product/${p.slug || p._id}`}>
         <div className="product-image-wrapper">
           <div className="image-square">
             <img
