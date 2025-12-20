@@ -147,7 +147,11 @@ export default function AdminDashboard(){
                 {(() => {
                   const raw = p.images?.[0] || UPLOAD_FALLBACK[p.slug] || null;
                   const src = raw ? resolveImageUrl(raw) : null;
-                  return src ? (<img src={src} alt={p.name} />) : (<div className="placeholder-img">No Image</div>);
+                  return src ? (
+                    <img src={src} alt={p.name} title={p.name} onError={(e) => { const { local, remote } = resolveImageSrc(raw.startsWith('/') ? raw : `/uploads/${raw}`); if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src = ''; }} />
+                  ) : (
+                    <div className="placeholder-img">No Image</div>
+                  );
                 })()}
               </div>
               <div className="product-info">
