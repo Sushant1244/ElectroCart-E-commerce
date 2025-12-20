@@ -170,17 +170,11 @@ export default function Home(){
           <div className="categories-grid">
             {categories.map((cat) => (
               <div key={cat.name} className="category-card">
-                <div className="category-icon">
-                  <img
-                    src={getCategoryImage(cat.name)}
-                    alt={cat.name}
-                    title={cat.name}
-                    loading="lazy"
-                    onError={(e) => { e.currentTarget.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }}
-                  />
+                  <div className="category-icon">
+                    {(() => { const { local, remote } = resolveImageSrc(`/uploads/${cat.imageFile}`); return (<img src={local || remote} alt={cat.name} title={cat.name} loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }} />); })()}
+                  </div>
+                  <h4>{cat.name}</h4>
                 </div>
-                <h4>{cat.name}</h4>
-              </div>
             ))}
           </div>
         </div>
