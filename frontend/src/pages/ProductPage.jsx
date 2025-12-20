@@ -12,6 +12,16 @@ export default function ProductPage(){
   // indicate loading state
   setProduct(undefined);
   API.get(`/products/${slug}`).then(res => { if (!cancelled) setProduct(res.data); }).catch(err => {
+    // fallback map (also used for demo/offline product rendering)
+    const FALLBACK = {
+      'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+      'alpha-watch-series': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+      'wireless-headphones': '/uploads/Wireless Headphones.png',
+      'homepad-mini': '/uploads/Homepad mini.png',
+      'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
+      'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
+      'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png'
+    };
       console.error(err);
       if (!cancelled) setProduct(null);
     });
