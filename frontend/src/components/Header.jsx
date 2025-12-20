@@ -40,7 +40,7 @@ export default function Header({ user, onLogout }) {
             {user ? (
               <>
                 <span>Welcome, {user.name || user.email}</span>
-                {user.isAdmin && <Link to="/admin">Admin</Link>}
+                {user.isAdmin === true && <Link to="/admin">Admin</Link>}
                 <button className="link-btn" onClick={() => { onLogout(); navigate('/'); }}>Logout</button>
               </>
             ) : (
@@ -63,21 +63,20 @@ export default function Header({ user, onLogout }) {
               <span className="brand-text">Elecrocart</span>
             </Link>
           </div>
-          <nav className="main-nav">
-            <Link to="/">HOME</Link>
-            <Link to="/#products">ELECTRONICS</Link>
-            <Link to="/blog">BLOG</Link>
-            <Link to="/pages">PAGES</Link>
-            <Link to="/contact">CONTACT</Link>
-          </nav>
-          <div className="header-actions">
-            <Link to="/search" className="icon-btn">🔍</Link>
-            <Link to="/wishlist" className="icon-btn">❤️</Link>
-            <Link to="/cart" className="icon-btn cart-icon">
-              🛍️
-              {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
-            </Link>
-          </div>
+            <nav className="main-nav">
+              <Link to="/">HOME</Link>
+              <Link to="/#products">ELECTRONICS</Link>
+              <Link to="/blog">BLOG</Link>
+              <Link to="/pages">PAGES</Link>
+              <Link to="/contact">CONTACT</Link>
+            </nav>
+            <div className="header-actions">
+              <div className="search-box">
+                <input aria-label="Search products" className="search-input" placeholder="Search products, brands..." />
+              </div>
+              <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">❤</Link>
+              <Link to="/cart" className="icon-btn cart-icon" aria-label="Cart">🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
+            </div>
         </div>
       </header>
     </>

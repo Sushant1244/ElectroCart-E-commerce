@@ -1,38 +1,78 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { resolveImageSrc } from '../utils/resolveImage';
 
 export default function ProductCard({ p }) {
-  const getImageUrl = (img) => {
-    if (!img) return '/placeholder.png';
-    if (img.startsWith('http')) return img;
-    // Handle both /uploads/ and full paths
-    const cleanPath = img.startsWith('/uploads/') ? img : `/uploads/${img}`;
-    return `http://localhost:5000${cleanPath}`;
+  // Fallback map: when the API returns generic names (Image 1.png) or images are missing,
+  // use a known filename from backend/uploads based on product slug.
+  const UPLOAD_FALLBACK = {
+    'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+    'wireless-headphones': '/uploads/Wireless Headphones.png',
+    'homepad-mini': '/uploads/Homepad mini.png',
+    'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
+    'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
+  'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png',
+  'music-magnet-headphone': '/uploads/Music magnet Headphone.jpg',
+  'security-smart-camera': '/uploads/Security Smart Camera.png',
+  'smart-box': '/uploads/Smart Box.png',
+  'macbook-air-m3': '/uploads/Macebook Air M3.png',
+  'mini-speaker': '/uploads/Mini Speaker.png',
+  'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png'
   };
-  
-  const img = getImageUrl(p.images?.[0]);
+
+  const getImageUrl = (img) => {
+    if (!img) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
+    const { local, remote } = resolveImageSrc(img);
+    // try local (frontend/public/uploads) first, browser will fall back to onError to load remote
+    return local || remote;
+  };
+
+  // prefer the first product image unless it's a generic 'Image X' filename
+  const rawFirst = p.images?.[0];
+  let img;
+  if (rawFirst && !rawFirst.includes('Image ')) img = getImageUrl(rawFirst);
+  else if (UPLOAD_FALLBACK[p.slug]) img = getImageUrl(UPLOAD_FALLBACK[p.slug]);
+  else if (p.name && /watch/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['alpha-watch-ultra']);
+  else img = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
   const rating = p.rating || 5;
   
   return (
-    <div className="product-card">
+  <div className="product-card">
       {p.featured && <span className="featured-badge">⭐ Featured</span>}
       <Link to={`/product/${p.slug}`}>
         <div className="product-image-wrapper">
-          <img 
-            src={img} 
-            alt={p.name}
-            onError={(e) => { 
-              e.target.src = '/placeholder.png';
-              e.target.onerror = null;
-            }} 
-          />
+          <div className="image-square">
+            <img 
+              src={img} 
+              alt={p.name}
+              title={img}
+              onError={(e) => { 
+                // on error, try replacing with remote backend URL
+                try {
+                  const { remote } = resolveImageSrc(p.images?.[0] || '');
+                  if (remote && e.target.src !== remote) e.target.src = remote;
+                } catch (err) {
+                  e.target.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=';
+                }
+                e.target.onerror = null;
+              }} 
+            />
+          </div>
         </div>
-        <h4>{p.name}</h4>
+
         <div className="product-rating">
           {[...Array(5)].map((_, i) => (
             <span key={i} className={`star ${i < rating ? 'filled' : ''}`}>★</span>
           ))}
         </div>
+
+  <h4 className="product-title">{p.name}</h4>
+        {p.description && (
+          <p className="product-excerpt" title={p.description}>
+            {p.description.length > 140 ? p.description.slice(0, 140) + '…' : p.description}
+          </p>
+        )}
+        
         <div className="product-pricing">
           <span className="current-price">Rs {p.price?.toLocaleString()}</span>
           {p.originalPrice && p.originalPrice > p.price && (

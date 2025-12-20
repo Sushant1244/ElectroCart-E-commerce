@@ -10,7 +10,6 @@ export default function Register({ onLogin }){
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [role, setRole] = useState('customer');
   const navigate = useNavigate();
 
   const register = async (e) => {
@@ -27,17 +26,25 @@ export default function Register({ onLogin }){
       const res = await API.post('/auth/register', { 
         name, 
         email, 
-        password,
-        isAdmin: role === 'admin'
+        password
       });
-      onLogin(res.data.token, res.data.user);
-      if (res.data.user.isAdmin) {
+      const normalizedUser = onLogin(res.data.token, res.data.user);
+      if (normalizedUser?.isAdmin) {
         navigate('/admin');
       } else {
         navigate('/');
       }
     } catch (err) {
-      alert(err?.response?.data?.message || 'Registration failed');
+      // Surface server validation messages and network errors to help debugging
+      const serverMsg = err?.response?.data?.message;
+      const status = err?.response?.status;
+      if (serverMsg) {
+        alert(serverMsg + (status ? ` (status ${status})` : ''));
+      } else if (err.message) {
+        alert('Registration failed: ' + err.message);
+      } else {
+        alert('Registration failed');
+      }
     }
   };
 
@@ -47,22 +54,7 @@ export default function Register({ onLogin }){
         <h2>Create Account</h2>
         <p className="auth-subtitle">Sign up to get started</p>
         
-        <div className="role-selector">
-          <button 
-            type="button"
-            className={`role-btn ${role === 'customer' ? 'active' : ''}`}
-            onClick={() => setRole('customer')}
-          >
-            Customer
-          </button>
-          <button 
-            type="button"
-            className={`role-btn ${role === 'admin' ? 'active' : ''}`}
-            onClick={() => setRole('admin')}
-          >
-            Admin
-          </button>
-        </div>
+  {/* role selector removed: registrations create regular customers by default */}
 
         <form onSubmit={register} className="auth-form">
           <div className="form-group">

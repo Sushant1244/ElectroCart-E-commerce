@@ -14,19 +14,29 @@ export default function Login({ onLogin }){
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await API.post('/auth/login', { email, password });
-      onLogin(res.data.token, res.data.user);
+  const res = await API.post('/auth/login', { email, password });
+  // onLogin now returns the normalized user object
+  const normalizedUser = onLogin(res.data.token, res.data.user);
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       }
       // Redirect admin to admin panel, customer to home
-      if (res.data.user.isAdmin) {
+  if (normalizedUser?.isAdmin) {
         navigate('/admin');
       } else {
         navigate('/');
       }
     } catch (err) {
-      alert(err?.response?.data?.message || 'Login failed. Please check your credentials.');
+      // Surface server validation messages and network errors for clearer feedback
+      const serverMsg = err?.response?.data?.message;
+      const status = err?.response?.status;
+      if (serverMsg) {
+        alert(serverMsg + (status ? ` (status ${status})` : ''));
+      } else if (err.message) {
+        alert('Login failed: ' + err.message);
+      } else {
+        alert('Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -94,6 +104,8 @@ export default function Login({ onLogin }){
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        
 
         <p className="auth-footer">
           Don't have an account? <Link to="/register">Sign up</Link>

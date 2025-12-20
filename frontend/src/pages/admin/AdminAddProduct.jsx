@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import UploadsPicker from '../../components/UploadsPicker';
 import API from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,10 +24,17 @@ export default function AdminAddProduct(){
     form.append('stock', stock);
     form.append('category', category);
     form.append('rating', rating);
-    for (let i = 0; i < images.length; i++) form.append('images', images[i]);
+    // If the admin selected existing uploads (strings), send them in a JSON field
+    if (images && images.length && typeof images[0] === 'string') {
+      // send as JSON string in images field so backend will accept as body images
+      form.append('images', JSON.stringify(images));
+    } else {
+      for (let i = 0; i < images.length; i++) form.append('images', images[i]);
+    }
 
     try {
-      await API.post('/products', form, { headers: {'Content-Type': 'multipart/form-data'} });
+      // Do not set Content-Type manually; let the browser include the correct multipart boundary
+      await API.post('/products', form);
       alert('Product added');
       navigate('/admin');
     } catch (err) {
@@ -37,7 +45,7 @@ export default function AdminAddProduct(){
   return (
     <div className="admin-form-container">
       <h2>Add New Product</h2>
-      <form onSubmit={submit} className="admin-form">
+  <form onSubmit={submit} className="admin-form">
         <div className="form-group">
           <label>Product Name</label>
           <input value={name} onChange={e=>setName(e.target.value)} placeholder="Name" required />
@@ -69,6 +77,10 @@ export default function AdminAddProduct(){
           <label>Product Images</label>
           <input type="file" multiple onChange={e=>setImages(e.target.files)} accept="image/*" />
           <small>You can select multiple images (max 6)</small>
+          <div style={{marginTop: 10}}>
+            <strong>Or choose from existing uploads</strong>
+            <UploadsPicker onSelect={(selected) => setImages(selected)} />
+          </div>
         </div>
         
         <div className="form-actions">

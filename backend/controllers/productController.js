@@ -1,10 +1,31 @@
 const Product = require('../models/Product');
+const mongoose = require('mongoose');
+const { listProducts: listInMemoryProducts, findBySlug: findInMemoryBySlug, findById: findInMemoryById } = require('../utils/inMemoryProducts');
 const slugify = require('slugify');
 
 exports.createProduct = async (req, res) => {
   try {
     const { name, description, price, originalPrice, category, stock, featured, rating } = req.body;
-    const images = (req.files || []).map(f => `/uploads/${f.filename}`);
+    // Support two ways to provide images:
+    // - uploading files (req.files) -> stored as /uploads/<filename>
+    // - providing existing upload paths in JSON body as `images` (e.g. ['/uploads/Iphone.png'])
+    let images = [];
+    if (req.files?.length) {
+      images = req.files.map(f => `/uploads/${f.filename}`);
+    } else if (req.body.images) {
+      // images may be a JSON array or a single comma-separated string
+      if (Array.isArray(req.body.images)) images = req.body.images;
+      else if (typeof req.body.images === 'string') {
+        try {
+          const parsed = JSON.parse(req.body.images);
+          if (Array.isArray(parsed)) images = parsed;
+          else images = [req.body.images];
+        } catch (e) {
+          // not JSON - treat as comma separated
+          images = req.body.images.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+    }
     const slug = slugify(name, { lower: true, strict: true });
     const existing = await Product.findOne({ slug });
     if (existing) return res.status(400).json({ message: 'Product with same slug exists' });
@@ -41,7 +62,7 @@ exports.updateProduct = async (req, res) => {
     if (update.rating) update.rating = Number(update.rating);
     if (update.featured !== undefined) update.featured = update.featured === 'true' || update.featured === true;
     
-    // If new images are uploaded, append them to existing images
+    // If new files are uploaded, convert to upload paths and append
     if (req.files?.length) {
       const newImages = req.files.map(f => `/uploads/${f.filename}`);
       const existingProduct = await Product.findById(id);
@@ -50,6 +71,17 @@ exports.updateProduct = async (req, res) => {
       } else {
         update.images = newImages;
       }
+    } else if (req.body.images) {
+      // If images are provided in body (JSON), append or set
+      let bodyImages = [];
+      if (Array.isArray(req.body.images)) bodyImages = req.body.images;
+      else if (typeof req.body.images === 'string') {
+        try { bodyImages = JSON.parse(req.body.images); if (!Array.isArray(bodyImages)) bodyImages = [bodyImages]; }
+        catch (e) { bodyImages = req.body.images.split(',').map(s => s.trim()).filter(Boolean); }
+      }
+      const existingProduct = await Product.findById(id);
+      if (existingProduct && existingProduct.images) update.images = [...existingProduct.images, ...bodyImages];
+      else update.images = bodyImages;
     }
     
     const product = await Product.findByIdAndUpdate(id, update, { new: true });
@@ -71,6 +103,11 @@ exports.deleteProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const { featured, category } = req.query;
+    // If DB is disconnected, return in-memory products for dev convenience
+    if (mongoose.connection.readyState !== 1) {
+      const products = listInMemoryProducts({ featured, category });
+      return res.json(products);
+    }
     const query = {};
     if (featured === 'true') query.featured = true;
     if (category) query.category = category;
@@ -83,6 +120,11 @@ exports.getProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const product = findInMemoryById(req.params.id);
+      if (!product) return res.status(404).json({ message: 'Not found' });
+      return res.json(product);
+    }
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Not found' });
     res.json(product);
@@ -93,6 +135,11 @@ exports.getProductById = async (req, res) => {
 
 exports.getProductBySlug = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const product = findInMemoryBySlug(req.params.slug);
+      if (!product) return res.status(404).json({ message: 'Not found' });
+      return res.json(product);
+    }
     const product = await Product.findOne({ slug: req.params.slug });
     if (!product) return res.status(404).json({ message: 'Not found' });
     res.json(product);

@@ -8,8 +8,11 @@ const connectDB = async (uri) => {
     });
     console.log('MongoDB connected');
   } catch (err) {
-    console.error(err);
-    process.exit(1);
+    console.error('MongoDB connection error:', err.message || err);
+    // In development, don't exit the process — allow the server to start
+    // so routes can return controlled errors. In production, consider
+    // failing fast by uncommenting the next line.
+    // process.exit(1);
   }
 };
 

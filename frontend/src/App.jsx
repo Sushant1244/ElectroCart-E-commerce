@@ -16,16 +16,37 @@ import Footer from './components/Footer';
 import API, { setAuthToken } from './api/api';
 
 function App(){
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
+  const parseIsAdmin = (v) => {
+    if (v === true || v === 1) return true;
+    if (v === false || v === 0) return false;
+    if (typeof v === 'string') return v.toLowerCase() === 'true' || v === '1';
+    return Boolean(v);
+  };
+
+  const storedUser = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      if (!u) return null;
+      // normalize isAdmin to boolean in a robust way
+      if (u.isAdmin !== undefined) u.isAdmin = parseIsAdmin(u.isAdmin);
+      return u;
+    } catch (e) {
+      return null;
+    }
+  })();
+  const [user, setUser] = useState(storedUser || null);
   useEffect(() => {
     const token = localStorage.getItem('token');
     setAuthToken(token);
   }, []);
   const onLogin = (token, user) => {
+    // normalize isAdmin to boolean before storing
+    const normalized = { ...user, isAdmin: parseIsAdmin(user?.isAdmin) };
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('user', JSON.stringify(normalized));
     setAuthToken(token);
-    setUser(user);
+    setUser(normalized);
+    return normalized;
   };
   const onLogout = () => {
     localStorage.removeItem('token');

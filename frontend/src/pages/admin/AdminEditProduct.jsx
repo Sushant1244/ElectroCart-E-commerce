@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../api/api';
+import UploadsPicker from '../../components/UploadsPicker';
 import { useParams, useNavigate } from 'react-router-dom';
 
 export default function AdminEditProduct(){
@@ -56,14 +57,17 @@ export default function AdminEditProduct(){
     form.append('featured', featured);
     
     // Only append new images if files are selected
-    for (let i = 0; i < images.length; i++) {
-      form.append('images', images[i]);
+    if (images && images.length && typeof images[0] === 'string') {
+      form.append('images', JSON.stringify(images));
+    } else {
+      for (let i = 0; i < images.length; i++) {
+        form.append('images', images[i]);
+      }
     }
 
     try {
-      await API.put(`/products/${id}`, form, { 
-        headers: { 'Content-Type': 'multipart/form-data' } 
-      });
+      // Do not set Content-Type manually; let the browser include multipart boundary
+      await API.put(`/products/${id}`, form);
       alert('Product updated successfully');
       navigate('/admin');
     } catch (err) {
@@ -127,9 +131,29 @@ export default function AdminEditProduct(){
           <div className="form-group">
             <label>Current Images</label>
             <div className="existing-images">
-              {existingImages.map((img, idx) => (
-                <img key={idx} src={img.startsWith('http') ? img : `http://localhost:5000${img}`} alt={`Product ${idx + 1}`} />
-              ))}
+              {existingImages.map((img, idx) => {
+                const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+                const clean = img.startsWith('/uploads/') ? img.replace('/uploads/', '') : img;
+                const src = img.startsWith('http') ? img : `${API_BASE}/uploads/${encodeURIComponent(clean)}`;
+                return (
+                  <img
+                    key={String(img) + idx}
+                    src={src}
+                    alt={`Product ${idx + 1}`}
+                    onError={(e) => {
+                      try {
+                        const cur = e.currentTarget.src || '';
+                        if (cur.startsWith(API_BASE)) {
+                          e.currentTarget.src = cur.replace(API_BASE, '');
+                          e.currentTarget.onerror = null;
+                        } else {
+                          e.currentTarget.src = '';
+                        }
+                      } catch (err) { e.currentTarget.src = ''; }
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
@@ -138,6 +162,10 @@ export default function AdminEditProduct(){
           <label>Add New Images</label>
           <input type="file" multiple onChange={e=>setImages(e.target.files)} accept="image/*" />
           <small>Select new images to add (existing images will be kept)</small>
+          <div style={{marginTop: 8}}>
+            <strong>Or choose from existing uploads</strong>
+            <UploadsPicker onSelect={(selected) => setImages(selected)} />
+          </div>
         </div>
         
         <div className="form-actions">

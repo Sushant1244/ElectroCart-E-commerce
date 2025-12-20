@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import API from '../../api/api';
+import { resolveImageSrc } from '../../utils/resolveImage';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -7,6 +8,25 @@ export default function AdminDashboard(){
   const [products, setProducts] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploadsList, setUploadsList] = useState([]);
+
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
+  // small slug -> upload fallback map
+  const UPLOAD_FALLBACK = {
+    'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+    'wireless-headphones': '/uploads/Wireless Headphones.png',
+    'homepad-mini': '/uploads/Homepad mini.png',
+    'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
+    'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
+    'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png'
+  };
+
+  const resolveImageUrl = (imgPath) => {
+    if (!imgPath) return null;
+    const { local, remote } = resolveImageSrc(imgPath.startsWith('/') ? imgPath : `/uploads/${imgPath}`);
+    return local || remote;
+  };
 
   useEffect(() => {
     loadData();
@@ -124,11 +144,11 @@ export default function AdminDashboard(){
         {products.map(p => (
             <div key={p._id} className="admin-product-card">
               <div className="product-image">
-                {p.images?.[0] ? (
-                  <img src={p.images[0].startsWith('http') ? p.images[0] : `http://localhost:5000${p.images[0]}`} alt={p.name} />
-                ) : (
-                  <div className="placeholder-img">No Image</div>
-                )}
+                {(() => {
+                  const raw = p.images?.[0] || UPLOAD_FALLBACK[p.slug] || null;
+                  const src = raw ? resolveImageUrl(raw) : null;
+                  return src ? (<img src={src} alt={p.name} />) : (<div className="placeholder-img">No Image</div>);
+                })()}
               </div>
               <div className="product-info">
             <h4>{p.name}</h4>
@@ -147,6 +167,8 @@ export default function AdminDashboard(){
         ))}
         </div>
       </div>
+
+  {/* uploads gallery removed */}
     </div>
   );
 }
