@@ -8,7 +8,12 @@ export default function ProductPage(){
   const [product, setProduct] = useState(null);
 
   useEffect(()=> {
-    API.get(`/products/${slug}`).then(res => setProduct(res.data)).catch(console.error);
+    let cancelled = false;
+    API.get(`/products/${slug}`).then(res => { if (!cancelled) setProduct(res.data); }).catch(err => {
+      console.error(err);
+      if (!cancelled) setProduct(null);
+    });
+    return () => { cancelled = true; };
   }, [slug]);
 
   const getImageUrl = (img) => {
@@ -19,7 +24,22 @@ export default function ProductPage(){
 
   // no-op: fallback map is defined below as FALLBACK
 
-  if(!product) return <div className="loading">Loading...</div>;
+  if (product === undefined) return <div className="loading">Loading...</div>;
+  if (product === null) {
+    // backend failed to respond or product not found — show friendly fallback and a retry button
+    return (
+      <div className="product-page">
+        <div className="loading-error">
+          <h3>Product not available</h3>
+          <p>The product details couldn't be loaded right now. You can try again or continue browsing.</p>
+          <div style={{marginTop:12}}>
+            <button className="btn" onClick={() => window.location.reload()}>Retry</button>
+            <a href="/" className="btn btn-primary" style={{marginLeft:8}}>Back to Home</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // choose first image; if none, use fallback map based on slug
   const FALLBACK = {
