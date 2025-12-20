@@ -252,7 +252,7 @@ export default function Home(){
             </div>
             <div className="discount-images">
               <div className="phone-image">
-                <img src={`${API_BASE}/uploads/${encodeURIComponent('Iphone banner.png')}`} alt="Iphone banner" title={`${API_BASE}/uploads/${encodeURIComponent('Iphone banner.png')}`} loading="lazy" onError={(e)=>{ e.currentTarget.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }} />
+                {(() => { const { local, remote } = resolveImageSrc('/uploads/Iphone banner.png'); return (<img src={local || remote} alt="Iphone banner" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }} />); })()}
               </div>
             </div>
           </div>
@@ -310,21 +310,21 @@ export default function Home(){
           <div className="blog-grid">
             <div className="blog-card">
               <div className="blog-image">
-                <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/uploads/${encodeURIComponent(' Music magnate .png')}`} alt="Music magnate" loading="lazy" onError={(e)=>{ e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>'; }} />
+                {(() => { const { local, remote } = resolveImageSrc('/uploads/ Music magnate .png'); return (<img src={local || remote} alt="Music magnate" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>'; }} />); })()}
               </div>
               <div className="blog-date">October 15, 2025</div>
               <h3>Music magnate speaker</h3>
             </div>
             <div className="blog-card">
               <div className="blog-image">
-                <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/uploads/${encodeURIComponent('Macbook Labero and.jpg')}`} alt="Macbook" loading="lazy" onError={(e)=>{ e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>'; }} />
+                {(() => { const { local, remote } = resolveImageSrc('/uploads/Macbook Labero and.jpg'); return (<img src={local || remote} alt="Macbook" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>'; }} />); })()}
               </div>
               <div className="blog-date">October 15, 2025</div>
               <h3>Macbook air labore at dolore</h3>
             </div>
             <div className="blog-card">
               <div className="blog-image">
-                <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/uploads/${encodeURIComponent('Music magnet Headphone.jpg')}`} alt="Music headphone" loading="lazy" onError={(e)=>{ e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>'; }} />
+                {(() => { const { local, remote } = resolveImageSrc('/uploads/Music magnet Headphone.jpg'); return (<img src={local || remote} alt="Music headphone" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>'; }} />); })()}
               </div>
               <div className="blog-date">October 15, 2025</div>
               <h3>Music magnate headphone</h3>

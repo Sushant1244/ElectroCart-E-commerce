@@ -133,13 +133,8 @@ export default function Checkout() {
 }
 
 function getImageUrl(img) {
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 	if (!img) return null;
-	if (img.startsWith('http')) return img;
-	const cleanPath = img.startsWith('/uploads/') ? img : `/uploads/${img}`;
-	const lastSlash = cleanPath.lastIndexOf('/');
-	const prefix = cleanPath.substring(0, lastSlash + 1);
-	const filename = cleanPath.substring(lastSlash + 1);
-	return `${API_BASE}${prefix}${encodeURIComponent(filename)}`;
+	const { local, remote } = resolveImageSrc(img.startsWith('/') ? img : `/uploads/${img}`);
+	return local || remote;
 }
 

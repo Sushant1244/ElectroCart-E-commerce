@@ -23,7 +23,7 @@ export default function ProductCard({ p }) {
   const getImageUrl = (img) => {
     if (!img) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
     const { local, remote } = resolveImageSrc(img);
-    // try local (frontend/public/uploads) first, browser will fall back to onError to load remote
+    // try local (frontend/public/uploads) first, then remote
     return local || remote;
   };
 
@@ -42,20 +42,24 @@ export default function ProductCard({ p }) {
       <Link to={`/product/${p.slug}`}>
         <div className="product-image-wrapper">
           <div className="image-square">
-            <img 
-              src={img} 
+            <img
+              src={img}
               alt={p.name}
               title={img}
-              onError={(e) => { 
-                // on error, try replacing with remote backend URL
+              onError={(e) => {
+                // If the browser failed to load local asset, try remote backend URL once.
                 try {
                   const { remote } = resolveImageSrc(p.images?.[0] || '');
-                  if (remote && e.target.src !== remote) e.target.src = remote;
+                  if (remote && e.currentTarget.src !== remote) {
+                    e.currentTarget.src = remote;
+                    return;
+                  }
                 } catch (err) {
-                  e.target.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=';
+                  // ignore
                 }
-                e.target.onerror = null;
-              }} 
+                e.currentTarget.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=';
+                e.currentTarget.onerror = null;
+              }}
             />
           </div>
         </div>

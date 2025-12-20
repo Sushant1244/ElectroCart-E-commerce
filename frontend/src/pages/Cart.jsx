@@ -22,15 +22,21 @@ export default function Cart(){
 
       // Try fetching product details from backend using slug or product id
       try {
-        if (item.slug) {
-          const res = await API.get(`/products/${item.slug}`);
-          const prod = res.data;
-          if (prod?.images?.[0]) return `${API_BASE}${prod.images[0].startsWith('/') ? prod.images[0] : '/' + prod.images[0]}`;
-        }
+          if (item.slug) {
+            const res = await API.get(`/products/${item.slug}`);
+            const prod = res.data;
+            if (prod?.images?.[0]) {
+              const { local, remote } = resolveImageSrc(prod.images[0].startsWith('/') ? prod.images[0] : `/uploads/${prod.images[0]}`);
+              return local || remote;
+            }
+          }
         if (item.product) {
           const res = await API.get(`/products/by-id/${item.product}`);
           const prod = res.data;
-          if (prod?.images?.[0]) return `${API_BASE}${prod.images[0].startsWith('/') ? prod.images[0] : '/' + prod.images[0]}`;
+          if (prod?.images?.[0]) {
+            const { local, remote } = resolveImageSrc(prod.images[0].startsWith('/') ? prod.images[0] : `/uploads/${prod.images[0]}`);
+            return local || remote;
+          }
         }
       } catch (e) {
         // ignore network errors and fall through to placeholder
@@ -65,15 +71,10 @@ export default function Cart(){
     return () => { cancelled = true; };
   }, []);
 
-  const getImageUrl = (img) => {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    const getImageUrl = (img) => {
     if (!img) return null;
-    if (img.startsWith('http')) return img;
-    const cleanPath = img.startsWith('/uploads/') ? img : `/uploads/${img}`;
-    const lastSlash = cleanPath.lastIndexOf('/');
-    const prefix = cleanPath.substring(0, lastSlash + 1);
-    const filename = cleanPath.substring(lastSlash + 1);
-    return `${API_BASE}${prefix}${encodeURIComponent(filename)}`;
+    const { local, remote } = resolveImageSrc(img.startsWith('/') ? img : `/uploads/${img}`);
+    return local || remote;
   };
 
   // fallback map for known demo slugs

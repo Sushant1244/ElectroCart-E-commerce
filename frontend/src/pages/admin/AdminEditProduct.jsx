@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../api/api';
+import { resolveImageSrc } from '../../utils/resolveImage';
 import UploadsPicker from '../../components/UploadsPicker';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -132,25 +133,15 @@ export default function AdminEditProduct(){
             <label>Current Images</label>
             <div className="existing-images">
               {existingImages.map((img, idx) => {
-                const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-                const clean = img.startsWith('/uploads/') ? img.replace('/uploads/', '') : img;
-                const src = img.startsWith('http') ? img : `${API_BASE}/uploads/${encodeURIComponent(clean)}`;
+                const raw = img;
+                const { local, remote } = resolveImageSrc(raw.startsWith('/') ? raw : `/uploads/${raw}`);
+                const src = local || remote || '';
                 return (
                   <img
                     key={String(img) + idx}
                     src={src}
                     alt={`Product ${idx + 1}`}
-                    onError={(e) => {
-                      try {
-                        const cur = e.currentTarget.src || '';
-                        if (cur.startsWith(API_BASE)) {
-                          e.currentTarget.src = cur.replace(API_BASE, '');
-                          e.currentTarget.onerror = null;
-                        } else {
-                          e.currentTarget.src = '';
-                        }
-                      } catch (err) { e.currentTarget.src = ''; }
-                    }}
+                    onError={(e) => { if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src = ''; }}
                   />
                 );
               })}
