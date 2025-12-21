@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 export default function Header({ user, onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [cartCount, setCartCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
   React.useEffect(() => {
     const updateCartCount = () => {
@@ -21,6 +24,22 @@ export default function Header({ user, onLogout }) {
 
   return (
     <>
+      {/* Skip link for keyboard users */}
+      <a
+        href="#content"
+        className="skip-link"
+        onClick={(e) => {
+          e.preventDefault();
+          // try to focus an element with id 'content' or the products section; fallback to body
+          const target = document.getElementById('content') || document.getElementById('products') || document.querySelector('main') || document.body;
+          if (target) {
+            target.setAttribute('tabindex', '-1');
+            target.focus();
+          }
+        }}
+      >
+        Skip to content
+      </a>
       {/* Top Bar */}
       <div className="top-bar">
         <div className="container">
@@ -41,7 +60,7 @@ export default function Header({ user, onLogout }) {
               <>
                 <span>Welcome, {user.name || user.email}</span>
                 {user.isAdmin === true && <Link to="/admin">Admin</Link>}
-                <button className="link-btn" onClick={() => { onLogout(); navigate('/'); }}>Logout</button>
+                <button aria-label="Logout" className="link-btn" onClick={() => { onLogout(); navigate('/'); }}>Logout</button>
               </>
             ) : (
               <>
@@ -63,19 +82,28 @@ export default function Header({ user, onLogout }) {
               <span className="brand-text">Elecrocart</span>
             </Link>
           </div>
-            <nav className="main-nav">
-              <Link to="/">HOME</Link>
-              <Link to="/#products">ELECTRONICS</Link>
-              <Link to="/blog">BLOG</Link>
-              <Link to="/pages">PAGES</Link>
-              <Link to="/contact">CONTACT</Link>
+            <nav className="main-nav" role="navigation" aria-label="Main navigation">
+              {/* Use aria-current to indicate active link for assistive tech */}
+              <Link to="/" aria-current={location.pathname === '/' && !location.hash ? 'page' : undefined}>HOME</Link>
+              <Link to="/#products" aria-current={(location.hash && location.hash.includes('products')) || (location.pathname === '/' && (new URLSearchParams(location.search).has('category'))) ? 'page' : undefined}>ELECTRONICS</Link>
+              <Link to="/blog" aria-current={location.pathname === '/blog' ? 'page' : undefined}>BLOG</Link>
+              <Link to="/pages" aria-current={location.pathname === '/pages' ? 'page' : undefined}>PAGES</Link>
+              <Link to="/contact" aria-current={location.pathname === '/contact' ? 'page' : undefined}>CONTACT</Link>
             </nav>
             <div className="header-actions">
               <div className="search-box">
-                <input aria-label="Search products" className="search-input" placeholder="Search products, brands..." />
+                <input
+                  aria-label="Search products"
+                  className="search-input"
+                  placeholder="Search products, brands..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`); } }}
+                />
+                {/* search button removed per request; Enter key in input still triggers search */}
               </div>
               <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">❤</Link>
-              <Link to="/cart" className="icon-btn cart-icon" aria-label="Cart">🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
+              <Link to="/cart" className="icon-btn cart-icon" aria-label={`Cart with ${cartCount} items`}>🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
             </div>
         </div>
       </header>

@@ -138,16 +138,33 @@ export default function Cart(){
             {cart.map((c, i) => (
               <div key={i} className="cart-item">
                 <div className="cart-item-thumb">
-                  { (c.image && c.image !== 'null') || (c.slug && SLUG_FALLBACK[c.slug]) ? (
-                    (() => {
-                      const imgSrc = c.image || SLUG_FALLBACK[c.slug] || null;
-                      if (!imgSrc) return <div className="thumb-placeholder" />;
-                      const { local, remote } = resolveImageSrc(imgSrc.startsWith('/') ? imgSrc : `/uploads/${imgSrc}`);
-                      return <img src={local || remote} alt={c.name} onError={(e)=>{ if (remote && e.currentTarget.src!==remote) e.currentTarget.src = remote; }} />;
-                    })()
-                  ) : (
-                    <div className="thumb-placeholder" />
-                  )}
+                  {(() => {
+                    const imgSrc = c.image || (c.slug && SLUG_FALLBACK[c.slug]) || null;
+                    if (!imgSrc) return <div className="thumb-placeholder" />;
+                    // If imgSrc is already an absolute URL or data URI or an absolute path, pass it through.
+                    const shouldPassThrough = imgSrc.startsWith('http') || imgSrc.startsWith('data:') || imgSrc.startsWith(window.location.origin) || imgSrc.startsWith('/');
+                    const { local, remote } = resolveImageSrc(shouldPassThrough ? imgSrc : `/uploads/${imgSrc}`);
+                    return (
+                      <img
+                        src={local || remote}
+                        alt={c.name}
+                        onError={(e) => {
+                          // try remote if available, otherwise show an inline placeholder image
+                          try {
+                            if (remote && e.currentTarget.src !== remote) {
+                              e.currentTarget.src = remote;
+                              return;
+                            }
+                          } catch (err) {
+                            // ignore
+                          }
+                          // remove handler to avoid infinite loop, then show SVG placeholder
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="12">No image</text></svg>';
+                        }}
+                      />
+                    );
+                  })()}
                 </div>
 
                 <div className="cart-item-info">

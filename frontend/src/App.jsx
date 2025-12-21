@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
+import Products from './pages/Products';
 import ProductPage from './pages/ProductPage';
+import SearchResults from './pages/SearchResults';
 import Cart from './pages/Cart';
+import Blog from './pages/Blog';
+import Pages from './pages/Pages';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -58,11 +62,15 @@ function App(){
   return (
     <div className="app">
       <Header user={user} onLogout={onLogout}/>
-      <main className="main-content">
+  <main id="content" className="main-content">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
           <Route path="/product/:slug" element={<ProductPage />} />
+          <Route path="/search" element={<SearchResults />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/pages" element={<Pages />} />
           <Route path="/login" element={<Login onLogin={onLogin} />} />
           <Route path="/register" element={<Register onLogin={onLogin} />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

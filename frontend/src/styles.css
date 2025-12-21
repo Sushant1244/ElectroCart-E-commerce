@@ -163,6 +163,28 @@ body, #root, .app {
   color: #2563eb;
 }
 
+/* Skip link: hidden by default, visible on keyboard focus */
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  height: auto;
+  padding: 8px 12px;
+  background: #2563eb;
+  color: #fff;
+  z-index: 2000;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
 .header-actions {
   display: flex;
   gap: 1rem;

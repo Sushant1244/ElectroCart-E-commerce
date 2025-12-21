@@ -2,12 +2,19 @@ import React, { useEffect, useState, useRef } from 'react';
 import API from '../api/api';
 import { resolveImageSrc } from '../utils/resolveImage';
 import ProductCard from '../components/ProductCard';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export default function Home(){
   const [products, setProducts] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [forceDemo, setForceDemo] = useState(false);
+  // router helpers used by hero/shop buttons and category clicks
+  const navigate = useNavigate();
+  const location = useLocation();
+  const buttonRefs = useRef([]);
+  const filterOptions = ['All', 'Accessories', 'iPhone', 'Laptop', 'iPad'];
+  const [activeFilter, setActiveFilter] = useState('All');
 
   // show loading while products are being fetched (moved below so hooks run first)
 
@@ -48,7 +55,8 @@ export default function Home(){
 
   // Try to find a product image representative for a category (first match)
   const getCategoryImage = (category) => {
-    const match = displayProducts.find(p => p.category === category.toLowerCase() || p.category === category);
+    // Look through the unfiltered baseProducts for a representative image for the category
+    const match = baseProducts.find(p => p.category === category.toLowerCase() || p.category === category || (p.name || '').toLowerCase().includes(category.toLowerCase()));
     if (match) {
       const imgs = getProductImages(match);
       if (imgs.length) {
@@ -91,9 +99,88 @@ export default function Home(){
     { _id: 'demo12', name: 'ENTERTAINMENT & GAMES Pack', slug: 'entertainment-games-pack', price: 450, images: ['/uploads/ENTERTAINMENT & GAMES.png'], stock: 50 }
   );
 
-  // Use demo products if API returned nothing
-  const displayProducts = (products?.length) ? products : DEMO_PRODUCTS;
+  // Use demo products if API returned nothing, and apply category filter from URL if present
+  const baseProducts = (products?.length) ? products : DEMO_PRODUCTS;
+  const params = new URLSearchParams(location.search || '');
+  const categoryParam = params.get('category') || '';
+  const categoryFilter = categoryParam.trim().toLowerCase();
 
+  // keep the activeFilter state in sync with the URL param so the UI reflects the selection
+  useEffect(() => {
+    if (!categoryParam) {
+      setActiveFilter('All');
+      return;
+    }
+    // try to match one of the filterOptions (case-insensitive)
+    const match = filterOptions.find(f => f.toLowerCase() === categoryFilter || f.toLowerCase().includes(categoryFilter));
+    setActiveFilter(match || 'All');
+  }, [categoryParam]);
+
+  const displayProducts = categoryFilter
+    ? baseProducts.filter(p => {
+        const cat = (p.category || '').toLowerCase();
+        const name = (p.name || '').toLowerCase();
+        const slug = (p.slug || '').toLowerCase();
+        // Common alias map so UI names like "iPhone" match backend category/tag variations
+        const CATEGORY_ALIASES = {
+          'iphone': ['iphone', 'phone', 'mobile', 'mobiles'],
+          'ipad': ['ipad', 'tablet', 'tab'],
+          'laptop': ['laptop', 'macbook', 'notebook'],
+          'headphone': ['headphone', 'headphones', 'audio'],
+          'camera': ['camera', 'cameras'],
+          'accessories': ['accessory', 'accessories', 'charger', 'cable']
+        };
+
+        const matchesAlias = (aliasKey) => {
+          const variants = CATEGORY_ALIASES[aliasKey] || [];
+          return variants.some(v => name.includes(v) || slug.includes(v) || cat === v);
+        };
+
+        return (
+          (cat && cat === categoryFilter) ||
+          name.includes(categoryFilter) ||
+          slug.includes(categoryFilter) ||
+          matchesAlias(categoryFilter)
+        );
+      })
+    : baseProducts;
+
+  // If the category filter produced no results from API/db, try matching the demo products as a fallback
+  const demoMatches = DEMO_PRODUCTS.filter(p => {
+    const cat = (p.category || '').toLowerCase();
+    const name = (p.name || '').toLowerCase();
+    const slug = (p.slug || '').toLowerCase();
+    const CATEGORY_ALIASES = {
+      'iphone': ['iphone', 'phone', 'mobile', 'mobiles'],
+      'ipad': ['ipad', 'tablet', 'tab'],
+      'laptop': ['laptop', 'macbook', 'notebook'],
+      'headphone': ['headphone', 'headphones', 'audio'],
+      'camera': ['camera', 'cameras'],
+      'accessories': ['accessory', 'accessories', 'charger', 'cable']
+    };
+    const matchesAlias = (aliasKey) => {
+      const variants = CATEGORY_ALIASES[aliasKey] || [];
+      return variants.some(v => name.includes(v) || slug.includes(v) || cat === v);
+    };
+    return (
+      (cat && cat === categoryFilter) ||
+      name.includes(categoryFilter) ||
+      slug.includes(categoryFilter) ||
+      matchesAlias(categoryFilter)
+    );
+  });
+
+  const finalProducts = (displayProducts && displayProducts.length) ? displayProducts : (categoryFilter ? demoMatches : baseProducts);
+  // If the user navigated with a category param and there are no API results,
+  // automatically enable demo mode so clicking categories never shows an empty page.
+  useEffect(() => {
+    if (categoryFilter && (!displayProducts || displayProducts.length === 0)) {
+      setForceDemo(true);
+    }
+  // Only run when categoryFilter changes
+  }, [categoryFilter]);
+
+  const effectiveProducts = forceDemo ? DEMO_PRODUCTS : finalProducts;
 
   const getProductImages = (p) => {
     if (p?.images?.length) return p.images;
@@ -141,18 +228,35 @@ export default function Home(){
           <div className="container hero-content-wrapper">
             <div className="hero-content">
               <span className="hero-badge">SALE UP TO 30% OFF</span>
-              <h1>Apple Watch Series</h1>
+              <h1>Alpha Watch Series</h1>
               <p>Featured packed at a better value than over powerful sensors to monitor your fitness.</p>
-              <Link to="/#products" className="btn-shop-now">Shop Now →</Link>
+              <button
+                className="btn-shop-now"
+                onClick={() => {
+                  // If already on home, just scroll. Otherwise navigate then scroll after a tick.
+                  if (location.pathname === '/') {
+                    const el = document.getElementById('products');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    navigate('/');
+                    setTimeout(() => {
+                      const el = document.getElementById('products');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 120);
+                  }
+                }}
+              >
+                Shop Now →
+              </button>
             </div>
             <div className="hero-image">
               {/* prefer local public/uploads, fallback to backend */}
               {(() => {
-                const { local, remote } = resolveImageSrc('/uploads/Apple Watch.png');
+                const { local, remote } = resolveImageSrc('/uploads/Alpha  Watch banner.png');
                 return (
                   <img
                     src={local || remote}
-                    alt="Apple Watch"
+                    alt="Alpha Watch"
                     loading="lazy"
                     onError={(e) => { if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else { e.currentTarget.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; } }}
                   />
@@ -169,7 +273,15 @@ export default function Home(){
           <h2 className="section-title">Trending Categories</h2>
           <div className="categories-grid">
             {categories.map((cat) => (
-              <div key={cat.name} className="category-card">
+              <div
+                key={cat.name}
+                className="category-card"
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  navigate(`/?category=${encodeURIComponent(cat.name)}#products`);
+                  setTimeout(() => { const el = document.getElementById('products'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 120);
+                }}
+              >
                   <div className="category-icon">
                     {(() => { const { local, remote } = resolveImageSrc(`/uploads/${cat.imageFile}`); return (<img src={local || remote} alt={cat.name} title={cat.name} loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }} />); })()}
                   </div>
@@ -188,7 +300,19 @@ export default function Home(){
               <div className="promo-content">
                 <h3>Security Smart Camera</h3>
                 <p>Just Start at $850</p>
-                <button className="btn-promo">Shop Now</button>
+                <button
+                  className="btn-promo"
+                  onClick={() => {
+                    const cat = 'Camera';
+                    navigate(`/?category=${encodeURIComponent(cat)}#products`);
+                    setTimeout(() => {
+                      const el = document.getElementById('products');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 120);
+                  }}
+                >
+                  Shop Now
+                </button>
               </div>
               <div className="promo-image">
                 {(() => { const { local, remote } = resolveImageSrc('/uploads/Security Smart Camera.png'); return (<img src={local || remote} alt="Camera" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.style.opacity=0.15; }} />); })()}
@@ -198,10 +322,43 @@ export default function Home(){
               <div className="promo-content">
                 <h3>ENTERTAINMENT & GAMES</h3>
                 <p>Just Start at $450</p>
-                <button className="btn-promo">Shop Now</button>
+                <button
+                  className="btn-promo"
+                  onClick={() => {
+                    const cat = 'ENTERTAINMENT & GAMES';
+                    navigate(`/?category=${encodeURIComponent(cat)}#products`);
+                    setTimeout(() => {
+                      const el = document.getElementById('products');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 120);
+                  }}
+                >
+                  Shop Now
+                </button>
               </div>
               <div className="promo-image">
-                {(() => { const { local, remote } = resolveImageSrc('/uploads/ENTERTAINMENT & GAMES.png'); return (<img src={local || remote} alt="Games" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.style.opacity=0.15; }} />); })()}
+                {(() => { const { local, remote } = resolveImageSrc('/uploads/ENTERTAINMENT & GAMES.png'); return (
+                  <img
+                    src={local || remote}
+                    alt="ENTERTAINMENT & GAMES"
+                    loading="lazy"
+                    width={220}
+                    height={140}
+                    onError={(e) => {
+                      try {
+                        if (remote && e.currentTarget.src !== remote) {
+                          e.currentTarget.src = remote;
+                          return;
+                        }
+                      } catch (err) {
+                        // ignore
+                      }
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
+                    }}
+                    style={{ objectFit: 'contain' }}
+                  />
+                ); })()}
               </div>
             </div>
           </div>
@@ -216,10 +373,19 @@ export default function Home(){
         <div className="container">
           <div className="section-header">
             <h2 className="section-title">Latest Products</h2>
-            <Link to="/#products" className="view-all-link">View All Product</Link>
+            <a
+              href="/products#products"
+              className="view-all-link"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/products#products');
+              }}
+            >
+              View All Product
+            </a>
           </div>
-          <div className="grid">
-            {displayProducts.slice(0, 5).map(p => {
+            <div className="grid">
+            {effectiveProducts.slice(0, 5).map(p => {
               // ensure ProductCard always gets at least one image
               const images = getProductImages(p);
               const prod = { ...p, images };
@@ -258,21 +424,66 @@ export default function Home(){
         <div className="container">
           <div className="section-header">
             <h2 className="section-title">Popular Product</h2>
-            <div className="category-filters">
-              <button className="filter-btn active">All</button>
-              <button className="filter-btn">Accessories</button>
-              <button className="filter-btn">iPhone</button>
-              <button className="filter-btn">Laptop</button>
-              <button className="filter-btn">iPad</button>
+            <div className="category-filters" role="tablist" aria-label="Product categories">
+              {filterOptions.map((f, i) => {
+                const isActive = activeFilter === f;
+                return (
+                  <button
+                    key={f}
+                    ref={(el) => { buttonRefs.current[i] = el; }}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    tabIndex={isActive ? 0 : -1}
+                    className={`filter-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveFilter(f);
+                      if (f === 'All') {
+                        navigate('/#products');
+                        setTimeout(() => { const el = document.getElementById('products'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 120);
+                      } else {
+                        navigate(`/?category=${encodeURIComponent(f)}#products`);
+                        setTimeout(() => { const el = document.getElementById('products'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 120);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // arrow navigation between tabs
+                      if (e.key === 'ArrowRight') {
+                        const next = (i + 1) % filterOptions.length;
+                        const el = buttonRefs.current[next];
+                        if (el) el.focus();
+                        e.preventDefault();
+                      } else if (e.key === 'ArrowLeft') {
+                        const prev = (i - 1 + filterOptions.length) % filterOptions.length;
+                        const el = buttonRefs.current[prev];
+                        if (el) el.focus();
+                        e.preventDefault();
+                      } else if (e.key === 'Enter' || e.key === ' ') {
+                        // activate on Enter or Space
+                        e.preventDefault();
+                        e.currentTarget.click();
+                      }
+                    }}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="grid">
-            {displayProducts.length === 0 ? (
+      {effectiveProducts.length === 0 ? (
               <div className="no-products">
                 <p>No products found. Make sure the backend is running at <strong>{API_BASE}</strong> and that products are seeded or available via <code>/api/products</code>.</p>
+                <div style={{ marginTop: 12 }}>
+                  <button className="btn" onClick={() => setForceDemo(true)}>Show demo products</button>
+                  {forceDemo && (
+                    <button className="btn" style={{ marginLeft: 8 }} onClick={() => setForceDemo(false)}>Hide demo products</button>
+                  )}
+                </div>
               </div>
               ) : (
-                displayProducts.slice(0, 8).map(p => {
+  effectiveProducts.slice(0, 8).map(p => {
                   const images = getProductImages(p);
                   const prod = { ...p, images };
                   return <ProductCard key={p._id} p={prod} />;

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { resolveImageSrc } from '../utils/resolveImage';
 
 export default function ProductCard({ p }) {
+  const navigate = useNavigate();
   // Fallback map: when the API returns generic names (Image 1.png) or images are missing,
   // use a known filename from backend/uploads based on product slug.
   const UPLOAD_FALLBACK = {
@@ -37,7 +38,12 @@ export default function ProductCard({ p }) {
   const rating = p.rating || 5;
   
   return (
-  <div className="product-card">
+  <div className="product-card" onClick={(e) => {
+      // If a child link handled the click, let it. Otherwise navigate programmatically.
+      const tag = e.target && e.target.tagName && e.target.tagName.toLowerCase();
+      if (tag === 'a' || tag === 'button' || tag === 'input') return;
+      if (p?.slug) navigate(`/product/${p.slug}`);
+    }}>
       {p.featured && <span className="featured-badge">⭐ Featured</span>}
   <Link to={`/product/${p.slug || p._id}`}>
         <div className="product-image-wrapper">
