@@ -53,21 +53,7 @@ export default function Home(){
     { name: 'Accessories', imageFile: 'Accessories.png' }
   ];
 
-  // Try to find a product image representative for a category (first match)
-  const getCategoryImage = (category) => {
-    // Look through the unfiltered baseProducts for a representative image for the category
-    const match = baseProducts.find(p => p.category === category.toLowerCase() || p.category === category || (p.name || '').toLowerCase().includes(category.toLowerCase()));
-    if (match) {
-      const imgs = getProductImages(match);
-      if (imgs.length) {
-        const { local, remote } = resolveImageSrc(imgs[0].startsWith('/') ? imgs[0] : `/uploads/${imgs[0]}`);
-        return local || remote;
-      }
-    }
-    // fallback to the category image file (local first)
-    const { local, remote } = resolveImageSrc(`/uploads/${category + (category.endsWith('.png') ? '' : '.png')}`);
-    return local || remote;
-  };
+  // (removed unused getCategoryImage helper) - images for categories resolved inline where needed
 
   // Fallback images for products when API returns no images (maps slug -> upload path)
   const PRODUCT_IMAGE_FALLBACK = {
@@ -170,7 +156,14 @@ export default function Home(){
     );
   });
 
-  const finalProducts = (displayProducts && displayProducts.length) ? displayProducts : (categoryFilter ? demoMatches : baseProducts);
+  let finalProducts;
+  if (displayProducts?.length) {
+    finalProducts = displayProducts;
+  } else if (categoryFilter) {
+    finalProducts = demoMatches;
+  } else {
+    finalProducts = baseProducts;
+  }
   // If the user navigated with a category param and there are no API results,
   // automatically enable demo mode so clicking categories never shows an empty page.
   useEffect(() => {
@@ -231,7 +224,9 @@ export default function Home(){
               <h1>Alpha Watch Series</h1>
               <p>Featured packed at a better value than over powerful sensors to monitor your fitness.</p>
               <button
-                className="btn-shop-now"
+                  type="button"
+                  className="btn-shop-now"
+                  aria-label="Shop all products"
                 onClick={() => {
                   // If already on home, just scroll. Otherwise navigate then scroll after a tick.
                   if (location.pathname === '/') {
@@ -272,21 +267,29 @@ export default function Home(){
         <div className="container">
           <h2 className="section-title">Trending Categories</h2>
           <div className="categories-grid">
-            {categories.map((cat) => (
-              <div
-                key={cat.name}
-                className="category-card"
-                style={{ cursor: 'pointer' }}
-                onClick={() => {
-                  navigate(`/?category=${encodeURIComponent(cat.name)}#products`);
-                  setTimeout(() => { const el = document.getElementById('products'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 120);
-                }}
-              >
+              {categories.map((cat, idx) => (
+                <button
+                  key={cat.name}
+                  type="button"
+                  className="category-card"
+                  aria-label={`Browse ${cat.name} category`}
+                  onClick={() => {
+                    navigate(`/?category=${encodeURIComponent(cat.name)}#products`);
+                    setTimeout(() => { const el = document.getElementById('products'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 120);
+                  }}
+                  onKeyDown={(e) => {
+                    // allow Enter/Space to activate the button (button handles by default), keep extra handlers minimal
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.currentTarget.click();
+                    }
+                  }}
+                >
                   <div className="category-icon">
                     {(() => { const { local, remote } = resolveImageSrc(`/uploads/${cat.imageFile}`); return (<img src={local || remote} alt={cat.name} title={cat.name} loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }} />); })()}
                   </div>
                   <h4>{cat.name}</h4>
-                </div>
+                </button>
             ))}
           </div>
         </div>
@@ -301,7 +304,9 @@ export default function Home(){
                 <h3>Security Smart Camera</h3>
                 <p>Just Start at $850</p>
                 <button
-                  className="btn-promo"
+                    type="button"
+                    className="btn-promo"
+                    aria-label="View Camera products"
                   onClick={() => {
                     const cat = 'Camera';
                     navigate(`/?category=${encodeURIComponent(cat)}#products`);
@@ -323,7 +328,9 @@ export default function Home(){
                 <h3>ENTERTAINMENT & GAMES</h3>
                 <p>Just Start at $450</p>
                 <button
-                  className="btn-promo"
+                    type="button"
+                    className="btn-promo"
+                    aria-label="View Entertainment and Games products"
                   onClick={() => {
                     const cat = 'ENTERTAINMENT & GAMES';
                     navigate(`/?category=${encodeURIComponent(cat)}#products`);
@@ -351,7 +358,9 @@ export default function Home(){
                           return;
                         }
                       } catch (err) {
-                        // ignore
+                        // log and continue with fallback image
+                        // eslint-disable-next-line no-console
+                        console.warn('Failed to load remote image, using fallback', err);
                       }
                       e.currentTarget.onerror = null;
                       e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
@@ -400,7 +409,7 @@ export default function Home(){
         <div className="container">
           <div className="discount-content">
             <div className="discount-text">
-              <button className="hurry-btn">Hurry Up!</button>
+              <span className="hurry-btn" aria-hidden="true">Hurry Up!</span>
               <h2>Up To 20% Discount Check it Out</h2>
               <div className="countdown">
                 <div className="countdown-item"><span className="countdown-value">{countdown.days}</span><span className="countdown-label">DAYS</span></div>
@@ -408,7 +417,7 @@ export default function Home(){
                 <div className="countdown-item"><span className="countdown-value">{countdown.minutes}</span><span className="countdown-label">MNS</span></div>
                 <div className="countdown-item"><span className="countdown-value">{countdown.seconds}</span><span className="countdown-label">SEC</span></div>
               </div>
-              <button className="btn-shop-now">SHOP NOW</button>
+              <button type="button" className="btn-shop-now" aria-label="Shop discounted products">SHOP NOW</button>
             </div>
             <div className="discount-images">
               <div className="phone-image">
