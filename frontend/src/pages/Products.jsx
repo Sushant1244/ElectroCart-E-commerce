@@ -15,8 +15,16 @@ export default function Products() {
       .then((res) => {
         if (!mounted) return
         const data = res?.data || []
-        if (Array.isArray(data) && data.length > 0) setProducts(data)
-        else setProducts(DEMO_PRODUCTS)
+        // merge demo products so 'All' view isn't empty or too small.
+        if (Array.isArray(data) && data.length > 0) {
+          const seen = new Set(data.map(d => (d.slug || d._id || d.id || '').toString()));
+          const merged = [...data];
+          for (const dp of DEMO_PRODUCTS) {
+            const key = (dp.slug || dp._id).toString();
+            if (!seen.has(key)) merged.push(dp);
+          }
+          setProducts(merged);
+        } else setProducts(DEMO_PRODUCTS)
       })
       .catch((err) => {
         if (!mounted) return

@@ -23,16 +23,17 @@ export default function ProductCard({ p }) {
 
   const getImageUrl = (img) => {
     if (!img) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
-    const { local, remote } = resolveImageSrc(img);
+  const { local, remote } = resolveImageSrc(Array.isArray(img) ? img[0] : img);
     // try local (frontend/public/uploads) first, then remote
     return local || remote;
   };
 
   // prefer the first product image unless it's a generic 'Image X' filename
-  const rawFirst = p.images?.[0];
+  const rawFirst = Array.isArray(p.images) ? p.images[0] : p.images;
   let img;
-  if (rawFirst && !rawFirst.includes('Image ')) img = getImageUrl(rawFirst);
-  else if (UPLOAD_FALLBACK[p.slug]) img = getImageUrl(UPLOAD_FALLBACK[p.slug]);
+  const slugKey = (p.slug || '').toLowerCase();
+  if (rawFirst && !String(rawFirst).includes('Image ')) img = getImageUrl(rawFirst);
+  else if (UPLOAD_FALLBACK[slugKey]) img = getImageUrl(UPLOAD_FALLBACK[slugKey]);
   else if (p.name && /watch/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['alpha-watch-ultra']);
   else img = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
   const rating = p.rating || 5;

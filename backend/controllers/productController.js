@@ -1,5 +1,4 @@
-const Product = require('../models/Product');
-const mongoose = require('mongoose');
+const adapter = require('../models/adapter');
 const { listProducts: listInMemoryProducts, findBySlug: findInMemoryBySlug, findById: findInMemoryById } = require('../utils/inMemoryProducts');
 const slugify = require('slugify');
 
@@ -27,7 +26,7 @@ exports.createProduct = async (req, res) => {
       }
     }
     const slug = slugify(name, { lower: true, strict: true });
-    const existing = await Product.findOne({ slug });
+  const existing = await adapter.Product.findOne({ slug });
     if (existing) return res.status(400).json({ message: 'Product with same slug exists' });
     
     const productData = {
@@ -43,8 +42,8 @@ exports.createProduct = async (req, res) => {
       rating: rating ? Number(rating) : 5
     };
     
-    const product = await Product.create(productData);
-    res.json(product);
+  const product = await adapter.Product.create(productData);
+  res.json(product);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -65,7 +64,7 @@ exports.updateProduct = async (req, res) => {
     // If new files are uploaded, convert to upload paths and append
     if (req.files?.length) {
       const newImages = req.files.map(f => `/uploads/${f.filename}`);
-      const existingProduct = await Product.findById(id);
+  const existingProduct = await adapter.Product.findById(id);
       if (existingProduct && existingProduct.images) {
         update.images = [...existingProduct.images, ...newImages];
       } else {
@@ -79,12 +78,12 @@ exports.updateProduct = async (req, res) => {
         try { bodyImages = JSON.parse(req.body.images); if (!Array.isArray(bodyImages)) bodyImages = [bodyImages]; }
         catch (e) { bodyImages = req.body.images.split(',').map(s => s.trim()).filter(Boolean); }
       }
-      const existingProduct = await Product.findById(id);
+  const existingProduct = await adapter.Product.findById(id);
       if (existingProduct && existingProduct.images) update.images = [...existingProduct.images, ...bodyImages];
       else update.images = bodyImages;
     }
     
-    const product = await Product.findByIdAndUpdate(id, update, { new: true });
+  const product = await adapter.Product.findByIdAndUpdate(id, update);
     res.json(product);
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -93,7 +92,7 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    await Product.findByIdAndDelete(req.params.id);
+  await adapter.Product.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -104,15 +103,16 @@ exports.getProducts = async (req, res) => {
   try {
     const { featured, category } = req.query;
     // If DB is disconnected, return in-memory products for dev convenience
-    if (mongoose.connection.readyState !== 1) {
+    // If using mongoose and disconnected, fallback to in-memory products
+    if (!adapter.Product.find) {
       const products = listInMemoryProducts({ featured, category });
       return res.json(products);
     }
     const query = {};
     if (featured === 'true') query.featured = true;
     if (category) query.category = category;
-    const products = await Product.find(query).sort({ createdAt: -1 });
-    res.json(products);
+  const products = await adapter.Product.find(query, { sort: { field: 'createdAt', dir: 'DESC' } });
+  res.json(products);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -120,12 +120,7 @@ exports.getProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      const product = findInMemoryById(req.params.id);
-      if (!product) return res.status(404).json({ message: 'Not found' });
-      return res.json(product);
-    }
-    const product = await Product.findById(req.params.id);
+  const product = await adapter.Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Not found' });
     res.json(product);
   } catch (e) {
@@ -135,12 +130,7 @@ exports.getProductById = async (req, res) => {
 
 exports.getProductBySlug = async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      const product = findInMemoryBySlug(req.params.slug);
-      if (!product) return res.status(404).json({ message: 'Not found' });
-      return res.json(product);
-    }
-    const product = await Product.findOne({ slug: req.params.slug });
+  const product = await adapter.Product.findBySlug(req.params.slug);
     if (!product) return res.status(404).json({ message: 'Not found' });
     res.json(product);
   } catch (e) {

@@ -17,4 +17,5 @@ UserSchema.methods.getResetPasswordToken = function() {
   return resetToken;
 };
 
-module.exports = mongoose.model('User', UserSchema);
+// Legacy Mongoose model stub - replaced during PG migration. Adapter uses Sequelize models.
+module.exports = null;
