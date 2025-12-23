@@ -11,14 +11,21 @@ if (pgConfig && pgConfig.Product) {
   const { Product: PgProduct, User: PgUser, Order: PgOrder } = pgConfig;
 
   adapter.Product = {
-    create: async (data) => PgProduct.create(data),
-    findOne: async (query) => PgProduct.findOne({ where: query }),
-    findById: async (id) => PgProduct.findByPk(id),
+    create: async (data) => {
+      const inst = await PgProduct.create(data);
+      const obj = inst.toJSON(); obj._id = obj.id; obj.images = obj.images || obj.imagesJson || []; return obj;
+    },
+    findOne: async (query) => {
+      const inst = await PgProduct.findOne({ where: query }); if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.images = obj.images || obj.imagesJson || []; return obj;
+    },
+    findById: async (id) => {
+      const inst = await PgProduct.findByPk(id); if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.images = obj.images || obj.imagesJson || []; return obj;
+    },
     findByIdAndUpdate: async (id, update) => {
       const inst = await PgProduct.findByPk(id);
       if (!inst) return null;
       await inst.update(update);
-      return inst;
+      await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.images = obj.images || obj.imagesJson || []; return obj;
     },
     findByIdAndDelete: async (id) => {
       const inst = await PgProduct.findByPk(id);
@@ -29,9 +36,12 @@ if (pgConfig && pgConfig.Product) {
     find: async (query = {}, opts = {}) => {
       const where = query;
       const order = opts.sort ? [[opts.sort.field, opts.sort.dir || 'DESC']] : [['createdAt', 'DESC']];
-      return PgProduct.findAll({ where, order });
+      const rows = await PgProduct.findAll({ where, order });
+      return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.images = o.images || o.imagesJson || []; return o; });
     },
-    findBySlug: async (slug) => PgProduct.findOne({ where: { slug } }),
+    findBySlug: async (slug) => {
+      const inst = await PgProduct.findOne({ where: { slug } }); if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.images = obj.images || obj.imagesJson || []; return obj;
+    },
   };
 
   adapter.User = {
@@ -57,13 +67,24 @@ if (pgConfig && pgConfig.Product) {
   };
 
   adapter.Order = {
-    create: async (data) => PgOrder.create(data),
-    find: async (query) => PgOrder.findAll({ where: query }),
-    findById: async (id) => PgOrder.findByPk(id),
-    findAll: async () => PgOrder.findAll(),
+    create: async (data) => {
+      const inst = await PgOrder.create(data);
+      const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || []; return obj;
+    },
+    find: async (query) => {
+      const rows = await PgOrder.findAll({ where: query });
+      return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; return o; });
+    },
+    findById: async (id) => {
+      const inst = await PgOrder.findByPk(id);
+      if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || []; return obj;
+    },
+    findAll: async () => {
+      const rows = await PgOrder.findAll(); return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; return o; });
+    },
     findByIdAndUpdate: async (id, update) => {
       const inst = await PgOrder.findByPk(id);
-      if (!inst) return null; await inst.update(update); return inst;
+      if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || []; return obj;
     }
   };
 

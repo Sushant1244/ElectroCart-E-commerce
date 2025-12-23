@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
     shippingAddress: { type: DataTypes.JSONB },
     paymentResult: { type: DataTypes.JSONB },
     totalPrice: { type: DataTypes.FLOAT },
+  status: { type: DataTypes.STRING, defaultValue: 'processing' },
+  deliveryStatus: { type: DataTypes.STRING, defaultValue: 'pending' },
+  trackingNumber: { type: DataTypes.STRING },
+  deliveryUpdates: { type: DataTypes.JSONB, defaultValue: [] },
     isPaid: { type: DataTypes.BOOLEAN, defaultValue: false },
     paidAt: { type: DataTypes.DATE },
   }, {

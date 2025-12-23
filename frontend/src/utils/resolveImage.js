@@ -7,7 +7,11 @@ export function resolveImageSrc(img) {
   img = String(img).trim();
   // If the image is already an absolute URL or a data URI, return as-is.
   if (img.startsWith('http') || img.startsWith('data:') || img.startsWith(window.location.origin)) return { local: img, remote: img };
-  const cleanPath = img.startsWith('/uploads/') ? img : `/uploads/${img}`;
+  // Normalize paths: accept '/uploads/x', 'uploads/x' or just 'x'
+  let cleanPath = img;
+  if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
+  if (!cleanPath.startsWith('uploads/')) cleanPath = `uploads/${cleanPath}`;
+  cleanPath = `/${cleanPath}`;
   const lastSlash = cleanPath.lastIndexOf('/');
   const prefix = cleanPath.substring(0, lastSlash + 1);
   const filename = cleanPath.substring(lastSlash + 1);

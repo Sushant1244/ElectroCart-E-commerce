@@ -42,23 +42,33 @@ exports.getAllOrders = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { status, deliveryStatus, trackingNumber, note, location } = req.body;
-    const update = { status };
-    
-    if (deliveryStatus) update.deliveryStatus = deliveryStatus;
-    if (trackingNumber) update.trackingNumber = trackingNumber;
-    
-    // Add delivery update
+    const id = req.params.id;
+
+    // Load existing order
+    const order = await adapter.Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Build updates
+    const updates = {};
+    if (status) updates.status = status;
+    if (deliveryStatus) updates.deliveryStatus = deliveryStatus;
+    if (trackingNumber) updates.trackingNumber = trackingNumber;
+
+    // Append a delivery update entry to the existing array
+    const existing = Array.isArray(order.deliveryUpdates) ? order.deliveryUpdates.slice() : [];
     if (deliveryStatus || note || location) {
-      const updateEntry = {
+      const entry = {
         status: deliveryStatus || status,
         location: location || 'Warehouse',
-        note: note || `${deliveryStatus || status} update`
+        note: note || `${deliveryStatus || status} update`,
+        date: new Date()
       };
-      update.$push = { deliveryUpdates: updateEntry };
+      existing.push(entry);
     }
-    
-  const order = await adapter.Order.findByIdAndUpdate(req.params.id, update);
-  res.json(order);
+    updates.deliveryUpdates = existing;
+
+    const updated = await adapter.Order.findByIdAndUpdate(id, updates);
+    return res.json(updated);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

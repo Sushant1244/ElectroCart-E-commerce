@@ -4,7 +4,8 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 const api = axios.create({
   baseURL: API_BASE + '/api',
-  headers: { 'Content-Type': 'application/json' },
+  // Do not force Content-Type globally so multipart/form-data (FormData) requests
+  // from admin forms work correctly and let the browser set the boundary.
   withCredentials: false,
 });
 
