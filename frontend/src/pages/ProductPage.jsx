@@ -47,9 +47,13 @@ export default function ProductPage(){
   }, [slug]);
 
   const getImageUrl = (img) => {
-    if (!img) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="520" height="400"><rect width="100%" height="100%" fill="%23fafafa"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="20">No image</text></svg>';
-    const { local, remote } = resolveImageSrc(img.startsWith('/') ? img : `/uploads/${img}`);
-    return local || remote;
+  if (!img) return { local: null, remote: null };
+  // accept arrays or comma-separated values
+  if (Array.isArray(img)) img = img[0];
+  if (typeof img === 'string' && img.includes(',')) img = img.split(',')[0];
+  img = String(img).trim();
+  const { local, remote } = resolveImageSrc(img.startsWith('/') ? img : `/uploads/${img}`);
+  return { local, remote };
   };
 
   // no-op: fallback map is defined below as FALLBACK
@@ -112,7 +116,9 @@ export default function ProductPage(){
   }
 
   // Resolve a final image src to always render an image element (use fallback if needed)
-  const resolvedSrc = mainImage ? getImageUrl(mainImage) : getImageUrl(FALLBACK['alpha-watch-series'] || FALLBACK['alpha-watch-ultra']);
+  const chosen = mainImage || FALLBACK[product.slug] || FALLBACK['alpha-watch-series'] || FALLBACK['alpha-watch-ultra'];
+  const { local: mainLocal, remote: mainRemote } = getImageUrl(chosen);
+  const resolvedSrc = mainLocal || mainRemote || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="520" height="400"><rect width="100%" height="100%" fill="%23fafafa"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="20">No image</text></svg>';
 
   const addToCart = () => {
     if (product.stock === 0) {
@@ -155,7 +161,19 @@ export default function ProductPage(){
           className="main-product-image"
           loading="lazy"
           title={resolvedSrc}
-          onError={(e) => { e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="520" height="400"><rect width="100%" height="100%" fill="%23fafafa"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="20">No image</text></svg>'; e.currentTarget.onerror=null; }}
+          onError={(e) => {
+            try {
+              // if current src was local and remote is available, try remote
+              if (mainRemote && e.currentTarget.src !== mainRemote) {
+                e.currentTarget.src = mainRemote;
+                return;
+              }
+            } catch (err) {
+              // ignore
+            }
+            e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="520" height="400"><rect width="100%" height="100%" fill="%23fafafa"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="20">No image</text></svg>';
+            e.currentTarget.onerror = null;
+          }}
         />
       </div>
       <div className="info">
