@@ -12,7 +12,8 @@ exports.createOrder = async (req, res) => {
       isPaid: true,
       status: 'processing',
       deliveryStatus: 'pending',
-      deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed' }]
+      // use a consistent `timestamp` field so frontend can render updates reliably
+      deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed', timestamp: new Date() }]
     };
     const order = await adapter.Order.create(orderData);
     res.json(order);
@@ -61,7 +62,8 @@ exports.updateOrderStatus = async (req, res) => {
         status: deliveryStatus || status,
         location: location || 'Warehouse',
         note: note || `${deliveryStatus || status} update`,
-        date: new Date()
+        // provide `timestamp` for frontend consistency (fallbacks handled on client)
+        timestamp: new Date()
       };
       existing.push(entry);
     }

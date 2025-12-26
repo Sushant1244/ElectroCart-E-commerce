@@ -69,22 +69,31 @@ if (pgConfig && pgConfig.Product) {
   adapter.Order = {
     create: async (data) => {
       const inst = await PgOrder.create(data);
-      const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || []; return obj;
+      const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || [];
+      // normalize deliveryUpdates timestamps
+      if (Array.isArray(obj.deliveryUpdates)) {
+        obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null }));
+      }
+      return obj;
     },
     find: async (query) => {
       const rows = await PgOrder.findAll({ where: query });
-      return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; return o; });
+  return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; if (Array.isArray(o.deliveryUpdates)) { o.deliveryUpdates = o.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); } return o; });
     },
     findById: async (id) => {
       const inst = await PgOrder.findByPk(id);
-      if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || []; return obj;
+  if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || [];
+  if (Array.isArray(obj.deliveryUpdates)) { obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+  return obj;
     },
     findAll: async () => {
-      const rows = await PgOrder.findAll(); return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; return o; });
+  const rows = await PgOrder.findAll(); return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; if (Array.isArray(o.deliveryUpdates)) { o.deliveryUpdates = o.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); } return o; });
     },
     findByIdAndUpdate: async (id, update) => {
       const inst = await PgOrder.findByPk(id);
-      if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || []; return obj;
+  if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || [];
+  if (Array.isArray(obj.deliveryUpdates)) { obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+  return obj;
     }
   };
 

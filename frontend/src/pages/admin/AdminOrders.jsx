@@ -52,7 +52,7 @@ export default function AdminOrders() {
         {orders.map(order => (
           <div key={order._id} className="order-card">
             <div className="order-header">
-              <h3>Order #{order._id.slice(-8)}</h3>
+              <h3>Order #{String(order._id).slice(-8)}</h3>
               <span className={`status-badge ${order.status}`}>{order.status}</span>
             </div>
             
@@ -84,7 +84,7 @@ export default function AdminOrders() {
                 <strong>Delivery Updates:</strong>
                 {order.deliveryUpdates.map((update, idx) => (
                   <div key={idx} className="timeline-item">
-                    <span className="timeline-date">{new Date(update.timestamp).toLocaleString()}</span>
+                    <span className="timeline-date">{new Date(update.timestamp || update.date).toLocaleString()}</span>
                     <span className="timeline-status">{update.status}</span>
                     {update.location && <span className="timeline-location">{update.location}</span>}
                   </div>
