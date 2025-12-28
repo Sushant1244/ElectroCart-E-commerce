@@ -1,47 +1,57 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../api/api';
 import { resolveImageSrc } from '../utils/resolveImage';
 
-export default function Cart(){
-  const [cart, setCart] = useState(JSON.parse(localStorage.getItem('cart') || '[]'));
+export default function Cart() {
+  const [cart, setCart] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cart') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
 
-  // Resolve any items that lack an explicit image by using slug fallback or fetching product details
+  // fallback map for known demo slugs
+  const SLUG_FALLBACK = {
+    'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+    'wireless-headphones': '/uploads/Wireless Headphones.png',
+    'homepad-mini': '/uploads/Homepad mini.png',
+    'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
+    'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
+    'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png'
+  };
+
   useEffect(() => {
     let cancelled = false;
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
     const resolveImageForItem = async (item) => {
-      // If item already has an encoded image URL, keep it
-      if (item.image) return item.image;
+      if (!item) return null;
+      // If item already has an encoded image URL string, keep it
+      if (item.image && typeof item.image === 'string') return item.image;
 
-      // If slug-based fallback exists, use it
-      if (item.slug && SLUG_FALLBACK[item.slug]) {
-        const { local, remote } = resolveImageSrc(SLUG_FALLBACK[item.slug]);
-        return local || remote;
-      }
+      // Slug fallback
+      if (item.slug && SLUG_FALLBACK[item.slug]) return SLUG_FALLBACK[item.slug];
 
-      // Try fetching product details from backend using slug or product id
       try {
-          if (item.slug) {
-            const res = await API.get(`/products/${item.slug}`);
-            const prod = res.data;
-            if (prod?.images?.[0]) {
-              const { local, remote } = resolveImageSrc(prod.images[0].startsWith('/') ? prod.images[0] : `/uploads/${prod.images[0]}`);
-              return local || remote;
-            }
+        if (item.slug) {
+          const res = await API.get(`/products/${item.slug}`);
+          const prod = res.data;
+          if (prod?.images?.[0]) {
+            const { local, remote } = resolveImageSrc(prod.images[0].startsWith('/') ? prod.images[0] : `/uploads/${prod.images[0]}`);
+            return local || remote || null;
           }
+        }
         if (item.product) {
           const res = await API.get(`/products/by-id/${item.product}`);
           const prod = res.data;
           if (prod?.images?.[0]) {
             const { local, remote } = resolveImageSrc(prod.images[0].startsWith('/') ? prod.images[0] : `/uploads/${prod.images[0]}`);
-            return local || remote;
+            return local || remote || null;
           }
         }
       } catch (e) {
-        // ignore network errors and fall through to placeholder
+        // ignore network errors
       }
-
       return null;
     };
 
@@ -50,9 +60,7 @@ export default function Cart(){
       let changed = false;
       for (let i = 0; i < currentCart.length; i++) {
         const item = currentCart[i];
-        if (!item.image) {
-          // resolve and store absolute URL (encoded by backend file serving if necessary)
-          // this stores a stable, ready-to-render URL in the cart object
+        if (!item.image || typeof item.image !== 'string') {
           // eslint-disable-next-line no-await-in-loop
           const resolved = await resolveImageForItem(item);
           if (resolved) {
@@ -71,26 +79,15 @@ export default function Cart(){
     return () => { cancelled = true; };
   }, []);
 
-    const getImageUrl = (img) => {
-    if (!img) return null;
-    const { local, remote } = resolveImageSrc(img.startsWith('/') ? img : `/uploads/${img}`);
-    return local || remote;
-  };
-
-  // fallback map for known demo slugs
-  const SLUG_FALLBACK = {
-    'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
-    'wireless-headphones': '/uploads/Wireless Headphones.png',
-    'homepad-mini': '/uploads/Homepad mini.png',
-    'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
-    'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
-    'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png'
-  };
-  useEffect(()=> {
-    localStorage.setItem('cart', JSON.stringify(cart));
+  useEffect(() => {
+    try {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    } catch (e) {
+      // ignore
+    }
   }, [cart]);
 
-  const total = cart.reduce((s,c) => s + c.price * (c.quantity || 1), 0);
+  const total = cart.reduce((s, c) => s + (Number(c.price) || 0) * (Number(c.quantity) || 1), 0);
 
   const checkout = async () => {
     const token = localStorage.getItem('token');
@@ -105,16 +102,16 @@ export default function Cart(){
         city: prompt('Enter city:') || 'Default City',
         zipCode: prompt('Enter zip code:') || '00000'
       };
-      const res = await API.post('/orders', { 
-        items: cart.map(item => ({ product: item.product, price: item.price, quantity: item.quantity })), 
+      const res = await API.post('/orders', {
+        items: cart.map(item => ({ product: item.product, price: item.price, quantity: item.quantity })),
         total,
         shippingAddress
       });
-      localStorage.removeItem('cart'); 
+      localStorage.removeItem('cart');
       setCart([]);
       alert('Order placed successfully!');
       window.location.href = '/';
-    } catch(err) {
+    } catch (err) {
       alert(err?.response?.data?.message || 'Order failed');
     }
   };
@@ -139,17 +136,26 @@ export default function Cart(){
               <div key={i} className="cart-item">
                 <div className="cart-item-thumb">
                   {(() => {
-                    const imgSrc = c.image || (c.slug && SLUG_FALLBACK[c.slug]) || null;
+                    let imgSrc = c.image || (c.slug && SLUG_FALLBACK[c.slug]) || null;
                     if (!imgSrc) return <div className="thumb-placeholder" />;
-                    // If imgSrc is already an absolute URL or data URI or an absolute path, pass it through.
+
+                    // If imgSrc is an object (sometimes added by older code), pick a sensible string
+                    if (typeof imgSrc === 'object') {
+                      imgSrc = imgSrc.local || imgSrc.remote || imgSrc.url || null;
+                    }
+
+                    if (!imgSrc || typeof imgSrc !== 'string') return <div className="thumb-placeholder" />;
+
                     const shouldPassThrough = imgSrc.startsWith('http') || imgSrc.startsWith('data:') || imgSrc.startsWith(window.location.origin) || imgSrc.startsWith('/');
                     const { local, remote } = resolveImageSrc(shouldPassThrough ? imgSrc : `/uploads/${imgSrc}`);
+                    const finalSrc = local || remote;
+                    if (!finalSrc) return <div className="thumb-placeholder" />;
+
                     return (
                       <img
-                        src={local || remote}
+                        src={finalSrc}
                         alt={c.name}
                         onError={(e) => {
-                          // try remote if available, otherwise show an inline placeholder image
                           try {
                             if (remote && e.currentTarget.src !== remote) {
                               e.currentTarget.src = remote;
@@ -158,7 +164,6 @@ export default function Cart(){
                           } catch (err) {
                             // ignore
                           }
-                          // remove handler to avoid infinite loop, then show SVG placeholder
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="12">No image</text></svg>';
                         }}
@@ -174,16 +179,16 @@ export default function Cart(){
                 <div className="cart-item-controls">
                   <label>
                     Quantity:
-                    <input 
-                      type="number" 
-                      value={c.quantity || 1} 
+                    <input
+                      type="number"
+                      value={c.quantity || 1}
                       min="1"
                       onChange={(e) => {
                         const q = Number(e.target.value);
                         const newCart = [...cart];
                         newCart[i].quantity = q;
                         setCart(newCart);
-                      }} 
+                      }}
                     />
                   </label>
                   <p className="item-total">Rs {(c.price * (c.quantity || 1)).toFixed(2)}</p>

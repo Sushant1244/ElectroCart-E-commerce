@@ -24,8 +24,8 @@ export default function ProductCard({ p }) {
   const getImageUrl = (img) => {
     if (!img) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
   const { local, remote } = resolveImageSrc(Array.isArray(img) ? img[0] : img);
-    // try local (frontend/public/uploads) first, then remote
-    return local || remote;
+    // prefer remote backend URL first (backend serves /uploads/), then local public/uploads
+    return remote || local;
   };
 
   // prefer the first product image unless it's a generic 'Image X' filename
@@ -37,6 +37,52 @@ export default function ProductCard({ p }) {
   else if (p.name && /watch/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['alpha-watch-ultra']);
   else img = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
   const rating = p.rating || 5;
+  
+  const addToCart = (e) => {
+    // prevent the outer card link/navigation
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (p.stock === 0) { alert('This product is out of stock'); return; }
+    try {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const productId = p._id || p.id || p.productId || p.slug;
+      const existingIndex = cart.findIndex(item => item.product === productId);
+      if (existingIndex >= 0) {
+        cart[existingIndex].quantity = (cart[existingIndex].quantity || 1) + 1;
+      } else {
+          // prefer storing a concrete URL (local or remote) so cart rendering is robust
+          let imageToStore = null;
+          try {
+            const candidate = (Array.isArray(p.images) ? p.images[0] : p.images) || UPLOAD_FALLBACK[(p.slug || '').toLowerCase()] || '';
+            const { local, remote } = resolveImageSrc(candidate);
+            // store remote first so images load even when local public uploads are not present
+            imageToStore = remote || local || img || null;
+          } catch (err) {
+            imageToStore = img || null;
+          }
+
+          cart.push({
+            product: productId,
+            name: p.name,
+            price: p.price || 0,
+            quantity: 1,
+            slug: p.slug,
+            image: imageToStore
+          });
+          // quick debug: print what image URL we store
+          // eslint-disable-next-line no-console
+          console.log('addToCart: storing image for', productId, imageToStore);
+      }
+      localStorage.setItem('cart', JSON.stringify(cart));
+      // dispatch storage event so header listeners update immediately in same tab
+  // notify other UI parts in the same tab that the cart changed
+  try { window.dispatchEvent(new CustomEvent('cartUpdated')); } catch (err) { /* fallback */ }
+      alert('Added to cart');
+    } catch (err) {
+      console.error('Add to cart failed', err);
+      alert('Failed to add to cart');
+    }
+  };
   
   return (
   <div className="product-card" onClick={(e) => {
@@ -97,6 +143,12 @@ export default function ProductCard({ p }) {
           </>
         )}
       </Link>
+      {/* Add to cart button shown on card */}
+      <div className="card-actions">
+        <button className="btn-add-cart" onClick={addToCart} disabled={p.stock === 0}>
+          {p.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+        </button>
+      </div>
     </div>
   );
 }

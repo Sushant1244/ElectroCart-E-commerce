@@ -2,16 +2,20 @@ const adapter = require('../models/adapter');
 
 exports.createOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, total } = req.body;
-    // For demo purposes, mark as paid. In production, integrate with payment gateway
+    const { items, shippingAddress, total, paymentMethod } = req.body;
+    // Determine paid status: COD remains unpaid until delivery (false), online methods marked paid for demo
+    const paid = paymentMethod && paymentMethod !== 'cod';
+
     const orderData = {
       userId: req.user._id,
       orderItems: items,
       shippingAddress,
       totalPrice: total,
-      isPaid: true,
+      paymentMethod: paymentMethod || 'cod',
+      isPaid: !!paid,
       status: 'processing',
       deliveryStatus: 'pending',
+      paymentResult: paid ? { provider: paymentMethod, paidAt: new Date() } : null,
       // use a consistent `timestamp` field so frontend can render updates reliably
       deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed', timestamp: new Date() }]
     };

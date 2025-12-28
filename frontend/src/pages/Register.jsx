@@ -3,6 +3,7 @@ import API from '../api/api';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function Register({ onLogin }){
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,9 +25,9 @@ export default function Register({ onLogin }){
     }
     try {
       const res = await API.post('/auth/register', { 
-        name, 
-        email, 
-        password
+        name: (name || '').trim(),
+        email: (email || '').trim(),
+        password: (password || '').trim()
       });
       const normalizedUser = onLogin(res.data.token, res.data.user);
       if (normalizedUser?.isAdmin) {
@@ -40,6 +41,9 @@ export default function Register({ onLogin }){
       const status = err?.response?.status;
       if (serverMsg) {
         alert(serverMsg + (status ? ` (status ${status})` : ''));
+      } else if (err.request && !err.response) {
+        // Network error / backend unreachable
+        alert(`Unable to contact backend at ${API_BASE}.\nPlease start the backend: open a terminal and run:\ncd backend && npm install && node server.js`);
       } else if (err.message) {
         alert('Registration failed: ' + err.message);
       } else {

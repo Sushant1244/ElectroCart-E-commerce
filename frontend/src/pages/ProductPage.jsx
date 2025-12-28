@@ -137,6 +137,12 @@ export default function ProductPage(){
       else if (FALLBACK[product.slug]) imgUrl = getImageUrl(FALLBACK[product.slug]);
       // prefer the already-resolved main image
       if (!imgUrl && resolvedSrc) imgUrl = resolvedSrc;
+      // If imgUrl is an object { local, remote }, pick a string URL
+      let imgString = null;
+      if (imgUrl) {
+        if (typeof imgUrl === 'string') imgString = imgUrl;
+        else if (typeof imgUrl === 'object') imgString = imgUrl.local || imgUrl.remote || null;
+      }
 
       cart.push({
         product: product._id,
@@ -144,7 +150,7 @@ export default function ProductPage(){
         price: product.price,
         quantity: 1,
         slug: product.slug,
-        image: imgUrl,
+        image: imgString || resolvedSrc || null,
       });
     }
     

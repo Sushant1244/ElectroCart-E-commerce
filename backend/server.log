@@ -1,26 +1,16 @@
-node:events:486
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::5001
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at app.listen (/Users/sumitshah/Downloads/ecommerce/backend/node_modules/express/lib/application.js:635:24)
-    at Object.<anonymous> (/Users/sumitshah/Downloads/ecommerce/backend/server.js:71:5)
-    at Module._compile (node:internal/modules/cjs/loader:1761:14)
-    at Object..js (node:internal/modules/cjs/loader:1893:10)
-    at Module.load (node:internal/modules/cjs/loader:1481:32)
-    at Module._load (node:internal/modules/cjs/loader:1300:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1976:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 5001
+Server running on port 5001
+Postgres (Sequelize) connected
+[mailer stub] sendMail called with: {
+  from: 'no-reply@electrocart.local',
+  to: 'test+cli@example.com',
+  subject: 'Welcome to ElectroCart',
+  text: 'Hi Test User,\n\nThanks for registering at ElectroCart!'
 }
-
-Node.js v24.11.1
+[mailer] sent [ 'test+cli@example.com' ]
+[mailer stub] sendMail called with: {
+  from: 'no-reply@electrocart.local',
+  to: 'sushantsha985@gmail.com',
+  subject: 'Welcome to ElectroCart',
+  text: 'Hi sushantshah,\n\nThanks for registering at ElectroCart!'
+}
+[mailer] sent [ 'sushantsha985@gmail.com' ]

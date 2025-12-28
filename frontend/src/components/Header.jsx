@@ -10,14 +10,25 @@ export default function Header({ user, onLogout }) {
 
   React.useEffect(() => {
     const updateCartCount = () => {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      setCartCount(cart.reduce((sum, item) => sum + (item.quantity || 1), 0));
+      let cart = [];
+      try {
+        const raw = localStorage.getItem('cart') || '[]';
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) cart = parsed;
+      } catch (e) {
+        console.error('Failed to parse cart from localStorage', e);
+        cart = [];
+      }
+      setCartCount(cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0));
     };
     updateCartCount();
     window.addEventListener('storage', updateCartCount);
+    // also listen for in-tab cart updates
+    window.addEventListener('cartUpdated', updateCartCount);
     const interval = setInterval(updateCartCount, 1000);
     return () => {
       window.removeEventListener('storage', updateCartCount);
+      window.removeEventListener('cartUpdated', updateCartCount);
       clearInterval(interval);
     };
   }, []);

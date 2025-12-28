@@ -768,6 +768,26 @@ body, #root, .app {
   display: block;
 }
 
+/* Card action area for buttons like Add to Cart */
+.card-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.75rem;
+}
+.btn-add-cart {
+  background: #2563eb;
+  color: white;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-add-cart:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
 /* ===== DISCOUNT BANNER ===== */
 .discount-banner {
   background: #eef8ff;
