@@ -23,9 +23,9 @@ export default function ProductCard({ p }) {
 
   const getImageUrl = (img) => {
     if (!img) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
-  const { local, remote } = resolveImageSrc(Array.isArray(img) ? img[0] : img);
-    // prefer remote backend URL first (backend serves /uploads/), then local public/uploads
-    return remote || local;
+    const { local, remote } = resolveImageSrc(Array.isArray(img) ? img[0] : img);
+    // prefer local public/uploads first (fast and available during dev). fallback to remote backend
+    return local || remote;
   };
 
   // prefer the first product image unless it's a generic 'Image X' filename
@@ -100,9 +100,9 @@ export default function ProductCard({ p }) {
               alt={p.name}
               title={img}
               onError={(e) => {
-                // If the browser failed to load local asset, try remote backend URL once.
+                // If the browser failed to load the local asset, try remote backend URL once.
                 try {
-                  const { remote } = resolveImageSrc(p.images?.[0] || '');
+                  const { remote } = resolveImageSrc(Array.isArray(p.images) ? p.images[0] : p.images || '');
                   if (remote && e.currentTarget.src !== remote) {
                     e.currentTarget.src = remote;
                     return;
@@ -110,6 +110,7 @@ export default function ProductCard({ p }) {
                 } catch (err) {
                   // ignore
                 }
+                // fallback tiny transparent PNG
                 e.currentTarget.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=';
                 e.currentTarget.onerror = null;
               }}
