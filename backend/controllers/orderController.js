@@ -22,16 +22,21 @@ exports.createOrder = async (req, res) => {
     const order = await adapter.Order.create(orderData);
     res.json(order);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+  try { console.error('createOrder error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
+  res.status(500).json({ message: e.message });
   }
 };
 
 exports.getMyOrders = async (req, res) => {
   try {
-  const orders = await adapter.Order.find({ userId: req.user._id });
+  const userId = req.user && (req.user._id || req.user.id);
+  // coerce numeric ids to number when possible to match PG schema
+  const qUserId = typeof userId === 'string' && /^[0-9]+$/.test(userId) ? Number(userId) : userId;
+  const orders = await adapter.Order.find({ userId: qUserId });
   res.json(orders);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+  try { console.error('getMyOrders error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
+  res.status(500).json({ message: e.message });
   }
 };
 
@@ -40,7 +45,8 @@ exports.getAllOrders = async (req, res) => {
   const orders = await adapter.Order.findAll();
   res.json(orders);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+  try { console.error('getAllOrders error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
+  res.status(500).json({ message: e.message });
   }
 };
 

@@ -107,16 +107,16 @@ export default function Checkout() {
 					<div className="order-items">
 						{cart.map((item, i) => (
 							<div key={i} className="order-item">
-												<div className="order-item-thumb">
-													{item.image ? (
-														(() => {
-															const { local, remote } = resolveImageSrc(item.image);
-															return <img src={local || remote} alt={item.name} onError={(e)=>{ if (remote && e.currentTarget.src!==remote) e.currentTarget.src = remote; }} />;
-														})()
-													) : (
-														<div className="thumb-placeholder" />
-													)}
-												</div>
+										<div className="order-item-thumb" style={{width:90, height:70, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center'}}>
+											{item.image ? (
+												(() => {
+													const { local, remote } = resolveImageSrc(item.image);
+													return <img src={local || remote} alt={item.name} style={{maxWidth:'100%', maxHeight:'100%'}} onError={(e)=>{ if (remote && e.currentTarget.src!==remote) e.currentTarget.src = remote; }} />;
+												})()
+											) : (
+												<div className="thumb-placeholder" style={{width:90, height:70}} />
+											)}
+										</div>
 								<div className="order-item-info">
 									<div className="order-item-name">{item.name}</div>
 									<div className="order-item-qty">Qty: {item.quantity || 1}</div>
@@ -127,6 +127,12 @@ export default function Checkout() {
 						<div className="order-total"><strong>Total: Rs {cart.reduce((s,c) => s + (c.price || 0) * (c.quantity || 1), 0).toFixed(2)}</strong></div>
 					</div>
 				)}
+				<div style={{marginTop:12}}>
+					<button className="btn btn-primary" onClick={() => {
+						if (!address) return alert('Please save a shipping address first');
+						navigate('/payment');
+					}}>Buy Now</button>
+				</div>
 			</div>
 		</div>
 	);

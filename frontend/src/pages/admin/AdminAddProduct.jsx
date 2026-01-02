@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import UploadsPicker from '../../components/UploadsPicker';
-import API from '../../api/api';
+import API, { setAuthToken } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminAddProduct(){
@@ -16,7 +16,27 @@ export default function AdminAddProduct(){
 
   const submit = async (e) => {
     e.preventDefault();
-    const form = new FormData();
+  // basic client-side validation
+  if (!name || !price) return alert('Please provide product name and price');
+  // Check slug uniqueness client-side to give faster feedback
+  try {
+    const slug = encodeURIComponent((name || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+    if (slug) {
+      try {
+        const existing = await API.get(`/products/${slug}`);
+        if (existing && existing.data) return alert('A product with a similar name/slug already exists. Change the product name.');
+      } catch (err) {
+        // 404 means not found which is what we want
+        if (err.response && err.response.status !== 404) {
+          console.warn('Slug check failed', err);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore slug-check failures
+  }
+
+  const form = new FormData();
     form.append('name', name);
     form.append('description', desc);
     form.append('price', price);
@@ -24,21 +44,90 @@ export default function AdminAddProduct(){
     form.append('stock', stock);
     form.append('category', category);
     form.append('rating', rating);
+    // Normalize FileList to array when file input used
+    let imgs = images;
+    if (imgs && typeof imgs === 'object' && typeof imgs.length === 'number' && !(Array.isArray(imgs))) {
+      try { imgs = Array.from(imgs); } catch (err) { /* leave as-is */ }
+    }
+
     // If the admin selected existing uploads (strings), send them in a JSON field
-    if (images && images.length && typeof images[0] === 'string') {
+    if (imgs && imgs.length && typeof imgs[0] === 'string') {
       // send as JSON string in images field so backend will accept as body images
-      form.append('images', JSON.stringify(images));
-    } else {
-      for (let i = 0; i < images.length; i++) form.append('images', images[i]);
+      form.append('images', JSON.stringify(imgs));
+    } else if (imgs && imgs.length) {
+      for (let i = 0; i < imgs.length; i++) form.append('images', imgs[i]);
     }
 
     try {
-      // Do not set Content-Type manually; let the browser include the correct multipart boundary
-      await API.post('/products', form);
-      alert('Product added');
-      navigate('/admin');
-    } catch (err) {
-      alert(err?.response?.data?.message || 'Error');
+  // Ensure auth header exists
+  const token = localStorage.getItem('token');
+  if (!token) return alert('You must be logged in as admin to add products. Please login and try again.');
+  setAuthToken(token);
+
+  // Do not set Content-Type manually; let the browser include the correct multipart boundary
+      // Debug: log form keys for easier diagnosis
+      try {
+        for (const pair of form.entries()) console.debug('form entry', pair[0], pair[1]);
+      } catch (e) { /* ignore */ }
+
+  const res = await API.post('/products', form);
+  alert('Product added');
+  // notify other parts of the app (home) to refresh product list
+  try { window.dispatchEvent(new CustomEvent('productsChanged')); localStorage.setItem('productsChanged', String(Date.now())); } catch (err) { /* ignore */ }
+  navigate('/admin');
+  } catch (err) {
+      console.error('Add product failed', err);
+      // Network / CORS errors do not populate err.response
+      if (err.request && !err.response) {
+        alert(`Unable to contact backend or CORS blocked the request. Please ensure backend is running and CORS allows this origin. Check browser console for details.`);
+      } else if (err.response) {
+        const status = err.response.status;
+        const body = err.response.data;
+        const msg = body?.message || JSON.stringify(body) || err.message;
+        // If server indicates slug collision, retry once with timestamp appended to name
+        if (status === 400 && /slug|same slug|already exists/i.test(msg)) {
+          const ts = Date.now();
+          const newName = `${name}-${ts}`;
+          if (confirm(`Product name appears duplicate. Retry with unique name: "${newName}" ?`)) {
+            // update form and retry once
+            setName(newName);
+            // rebuild FormData with new name
+            const retryForm = new FormData();
+            retryForm.append('name', newName);
+            retryForm.append('description', desc);
+            retryForm.append('price', price);
+            if (originalPrice) retryForm.append('originalPrice', originalPrice);
+            retryForm.append('stock', stock);
+            retryForm.append('category', category);
+            retryForm.append('rating', rating);
+            let imgs = images;
+            if (imgs && typeof imgs === 'object' && typeof imgs.length === 'number' && !(Array.isArray(imgs))) {
+              try { imgs = Array.from(imgs); } catch (e) { /* ignore */ }
+            }
+            if (imgs && imgs.length && typeof imgs[0] === 'string') {
+              retryForm.append('images', JSON.stringify(imgs));
+            } else if (imgs && imgs.length) {
+              for (let i = 0; i < imgs.length; i++) retryForm.append('images', imgs[i]);
+            }
+            try {
+              setAuthToken(localStorage.getItem('token'));
+              await API.post('/products', retryForm);
+              alert('Product added (with auto-suffix)');
+              try { window.dispatchEvent(new CustomEvent('productsChanged')); localStorage.setItem('productsChanged', String(Date.now())); } catch (err) { /* ignore */ }
+              navigate('/admin');
+              return;
+            } catch (retryErr) {
+              console.error('Retry add product failed', retryErr);
+              const rmsg = retryErr?.response?.data?.message || retryErr?.message || 'Retry failed';
+              alert(`Retry failed: ${rmsg}`);
+              return;
+            }
+          }
+        }
+        alert(`Server responded ${status}: ${msg}`);
+      } else {
+        alert(err.message || 'Error adding product');
+      }
     }
   };
 

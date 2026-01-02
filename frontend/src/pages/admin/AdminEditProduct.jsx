@@ -70,7 +70,8 @@ export default function AdminEditProduct(){
       // Do not set Content-Type manually; let the browser include multipart boundary
       await API.put(`/products/${id}`, form);
       alert('Product updated successfully');
-      navigate('/admin');
+  try { window.dispatchEvent(new CustomEvent('productsChanged')); localStorage.setItem('productsChanged', String(Date.now())); } catch (err) { /* ignore */ }
+  navigate('/admin');
     } catch (err) {
       alert(err?.response?.data?.message || 'Failed to update product');
     }

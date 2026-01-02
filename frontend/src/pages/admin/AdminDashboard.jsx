@@ -52,7 +52,8 @@ export default function AdminDashboard(){
     try {
     await API.delete(`/products/${id}`);
     setProducts(products.filter(p => p._id !== id));
-      loadData();
+  try { window.dispatchEvent(new CustomEvent('productsChanged')); localStorage.setItem('productsChanged', String(Date.now())); } catch (err) { /* ignore */ }
+  loadData();
     } catch (err) {
       alert('Failed to delete product');
     }
@@ -62,6 +63,7 @@ export default function AdminDashboard(){
     try {
       await API.put(`/products/${id}`, { featured: !current });
       setProducts(products.map(p => p._id === id ? { ...p, featured: !current } : p));
+  try { window.dispatchEvent(new CustomEvent('productsChanged')); localStorage.setItem('productsChanged', String(Date.now())); } catch (err) { /* ignore */ }
     } catch (err) {
       alert('Failed to update product');
     }
@@ -108,24 +110,24 @@ export default function AdminDashboard(){
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={analytics.salesByMonth}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="_id" />
+                  <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="total" stroke="#8884d8" name="Revenue (Rs)" />
-                  <Line type="monotone" dataKey="count" stroke="#82ca9d" name="Orders" />
+                    <Line type="monotone" dataKey="total" stroke="#8884d8" name="Revenue (Rs)" />
+                    <Line type="monotone" dataKey="count" stroke="#82ca9d" name="Orders" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
 
-          {analytics.topProducts && analytics.topProducts.length > 0 && (
+    {analytics.topProducts && analytics.topProducts.length > 0 && (
             <div className="chart-container">
               <h3>Top Selling Products</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.topProducts}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="productName" angle={-45} textAnchor="end" height={100} />
+      <XAxis dataKey="productName" angle={-45} textAnchor="end" height={100} />
                   <YAxis />
                   <Tooltip />
                   <Legend />
@@ -162,6 +164,7 @@ export default function AdminDashboard(){
               </div>
               <div className="product-actions">
                 <Link to={`/admin/edit/${p._id}`} className="btn-edit">Edit</Link>
+                <a className="btn-view" href={`/product/${p.slug}`} target="_blank" rel="noreferrer">View</a>
                 <button onClick={() => toggleFeatured(p._id, p.featured)} className={p.featured ? 'btn-featured active' : 'btn-featured'}>
                   {p.featured ? '★ Featured' : '☆ Feature'}
                 </button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api/api';
 import { resolveImageSrc } from '../utils/resolveImage';
 
@@ -89,31 +90,17 @@ export default function Cart() {
 
   const total = cart.reduce((s, c) => s + (Number(c.price) || 0) * (Number(c.quantity) || 1), 0);
 
-  const checkout = async () => {
+  const navigate = useNavigate();
+
+  // Redirect to checkout page where user can edit full address and then proceed to payment
+  const checkout = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       alert('Please login to checkout');
       window.location.href = '/login';
       return;
     }
-    try {
-      const shippingAddress = {
-        address: prompt('Enter shipping address:') || 'Default Address',
-        city: prompt('Enter city:') || 'Default City',
-        zipCode: prompt('Enter zip code:') || '00000'
-      };
-      const res = await API.post('/orders', {
-        items: cart.map(item => ({ product: item.product, price: item.price, quantity: item.quantity })),
-        total,
-        shippingAddress
-      });
-      localStorage.removeItem('cart');
-      setCart([]);
-      alert('Order placed successfully!');
-      window.location.href = '/';
-    } catch (err) {
-      alert(err?.response?.data?.message || 'Order failed');
-    }
+    navigate('/checkout');
   };
 
   const removeItem = (index) => {

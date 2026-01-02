@@ -19,7 +19,15 @@ export default function Home(){
   // show loading while products are being fetched (moved below so hooks run first)
 
   useEffect(()=> {
-    loadProducts();
+  loadProducts();
+  // listen for admin updates and reload products when they occur
+    const handler = () => { loadProducts(); };
+    window.addEventListener('productsChanged', handler);
+    const storageHandler = (ev) => {
+      if (ev.key === 'productsChanged') loadProducts();
+    };
+    window.addEventListener('storage', storageHandler);
+    return () => { window.removeEventListener('productsChanged', handler); window.removeEventListener('storage', storageHandler); };
   }, []);
 
   // uploadsList removed: gallery was developer-only and is no longer displayed

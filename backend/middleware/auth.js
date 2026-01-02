@@ -19,7 +19,8 @@ exports.authMiddleware = async (req, res, next) => {
       if (u) { delete u.password; delete u.passwordHash; }
       req.user = u;
     }
-    next();
+  if (!req.user) return res.status(401).json({ message: 'User not found' });
+  next();
   } catch (err) {
     return res.status(401).json({ message: 'Token invalid' });
   }

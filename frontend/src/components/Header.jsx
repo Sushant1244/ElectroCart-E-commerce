@@ -71,6 +71,7 @@ export default function Header({ user, onLogout }) {
               <>
                 <span>Welcome, {user.name || user.email}</span>
                 {user.isAdmin === true && <Link to="/admin">Admin</Link>}
+                <Link to="/orders">My Orders</Link>
                 <button aria-label="Logout" className="link-btn" onClick={() => { onLogout(); navigate('/'); }}>Logout</button>
               </>
             ) : (

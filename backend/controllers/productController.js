@@ -4,6 +4,14 @@ const slugify = require('slugify');
 
 exports.createProduct = async (req, res) => {
   try {
+    // Debug: log incoming request metadata to help diagnose 500 errors
+    try {
+      console.debug('createProduct called', {
+        bodyKeys: req.body ? Object.keys(req.body) : null,
+        hasFiles: Array.isArray(req.files) ? req.files.length : 0,
+        contentType: req.headers['content-type']
+      });
+    } catch (logErr) { console.debug('createProduct: failed to log request meta', logErr); }
     const { name, description, price, originalPrice, category, stock, featured, rating } = req.body;
     // Support two ways to provide images:
     // - uploading files (req.files) -> stored as /uploads/<filename>
@@ -45,7 +53,10 @@ exports.createProduct = async (req, res) => {
   const product = await adapter.Product.create(productData);
   res.json(product);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+  // Log full error for diagnostics
+  try { console.error('createProduct error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
+  // Respond with message when available, otherwise empty string (client already handles this)
+  res.status(500).json({ message: e && e.message ? e.message : '' });
   }
 };
 

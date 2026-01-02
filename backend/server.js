@@ -40,25 +40,31 @@ const PORT = process.env.PORT || 5001;
 // MongoDB support has been removed; use POSTGRES_URL to enable Postgres.
 
 // Enable CORS: in production use CLIENT_URL, in development allow localhost on common dev ports
+// For local debugging you can set DEV_ALLOW_ALL_ORIGINS=true in backend/.env to allow any origin
 if (process.env.NODE_ENV === 'production') {
   app.use(cors({ origin: process.env.CLIENT_URL || 'https://your-production-client.com', credentials: true }));
 } else {
-  const allowedLocalOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:3000',
-    'http://localhost:3001'
-  ];
-  app.use(cors({
-    origin: (origin, cb) => {
-      // Allow requests with no origin like curl or server-to-server
-      if (!origin) return cb(null, true);
-      if (allowedLocalOrigins.includes(origin) || origin.startsWith('http://localhost:')) return cb(null, true);
-      return cb(new Error('Not allowed by CORS'), false);
-    },
-    credentials: true
-  }));
+  if (process.env.DEV_ALLOW_ALL_ORIGINS === 'true') {
+    // Allow all origins for quick local debugging (mirrors request Origin header)
+    app.use(cors({ origin: true, credentials: true }));
+  } else {
+    const allowedLocalOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    app.use(cors({
+      origin: (origin, cb) => {
+        // Allow requests with no origin like curl or server-to-server
+        if (!origin) return cb(null, true);
+        if (allowedLocalOrigins.includes(origin) || origin.startsWith('http://localhost:')) return cb(null, true);
+        return cb(new Error('Not allowed by CORS'), false);
+      },
+      credentials: true
+    }));
+  }
 }
 
 // Parse JSON and URL-encoded payloads
@@ -102,4 +108,14 @@ server.on('error', (err) => {
     console.error('Server error:', err && err.stack ? err.stack : err);
     process.exit(1);
   }
+});
+
+// Global error handler (development friendly) — logs stack and returns minimal message
+app.use((err, req, res, next) => {
+  try {
+    console.error('Unhandled error:', err && err.stack ? err.stack : err);
+  } catch (e) {
+    console.error('Failed to log unhandled error', e);
+  }
+  res.status(500).json({ message: err && err.message ? err.message : '' });
 });

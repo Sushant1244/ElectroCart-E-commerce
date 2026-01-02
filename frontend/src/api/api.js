@@ -1,9 +1,12 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+// In development use a relative /api base so Vite's dev server proxy (vite.config.mjs)
+// forwards requests to the backend without invoking browser CORS. In production
+// use the configured VITE_API_URL or fallback to localhost.
+const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
 
 const api = axios.create({
-  baseURL: API_BASE + '/api',
+  baseURL: (API_BASE ? API_BASE + '/api' : '/api'),
   // Do not force Content-Type globally so multipart/form-data (FormData) requests
   // from admin forms work correctly and let the browser set the boundary.
   withCredentials: false,
