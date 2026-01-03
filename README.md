@@ -1,6 +1,6 @@
-# 🚀 ElectroCart — Modern E‑commerce Demo
+# 🚀 ElectroCart — Modern E‑commerce Website
 
-ElectroCart is a full-stack demo e‑commerce application built to showcase a compact, resilient storefront UI and a minimal API for product data and uploads.
+ElectroCart is a full-stack  e‑commerce application built to showcase a compact, resilient storefront UI and a minimal API for product data and uploads.
 
 ## ✨ Why this project
 - ✅ Clean, responsive React frontend (Vite) with a local-first image strategy so the UI stays useful when the API is unavailable.
