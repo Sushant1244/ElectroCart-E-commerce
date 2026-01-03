@@ -1,4 +1,4 @@
-# 🚀 ElectroCart — Modern E‑commerce Demo
+# 🚀 ElectroCart — Modern E‑commerce Website
 
 ElectroCart is a full-stack demo e‑commerce application built to showcase a compact, resilient storefront UI and a minimal API for product data and uploads.
 
