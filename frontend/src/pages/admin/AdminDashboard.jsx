@@ -76,106 +76,141 @@ export default function AdminDashboard(){
   return (
     <div className="admin-dashboard">
       <div className="admin-header">
-        <h2>Admin Dashboard - Elecrocart</h2>
+        <div>
+          <h2>Admin Dashboard</h2>
+          <p className="admin-sub">Overview and product management</p>
+        </div>
         <div className="admin-header-actions">
           <Link to="/admin/add" className="btn-primary">Add New Product</Link>
-          <Link to="/admin/orders" className="btn-primary">Manage Orders & Delivery</Link>
+          <Link to="/admin/orders" className="btn-outline">Manage Orders</Link>
         </div>
       </div>
 
       {analytics && (
-        <div className="analytics-section">
+        <section className="analytics-section">
           <div className="stats-grid">
             <div className="stat-card">
-              <h3>Total Sales</h3>
-              <p className="stat-value">Rs {analytics.totalSales?.toLocaleString() || 0}</p>
+              <small>Total Sales</small>
+              <div className="stat-value">Rs {analytics.totalSales?.toLocaleString() || 0}</div>
             </div>
             <div className="stat-card">
-              <h3>Total Orders</h3>
-              <p className="stat-value">{analytics.totalOrders || 0}</p>
+              <small>Total Orders</small>
+              <div className="stat-value">{analytics.totalOrders || 0}</div>
             </div>
             <div className="stat-card">
-              <h3>Total Products</h3>
-              <p className="stat-value">{products.length}</p>
+              <small>Total Products</small>
+              <div className="stat-value">{products.length}</div>
             </div>
             <div className="stat-card">
-              <h3>Featured Products</h3>
-              <p className="stat-value">{products.filter(p => p.featured).length}</p>
+              <small>Featured</small>
+              <div className="stat-value">{products.filter(p => p.featured).length}</div>
             </div>
           </div>
 
-          {analytics.salesByMonth && analytics.salesByMonth.length > 0 && (
-            <div className="chart-container">
-              <h3>Sales Over Time</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={analytics.salesByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                    <Line type="monotone" dataKey="total" stroke="#8884d8" name="Revenue (Rs)" />
-                    <Line type="monotone" dataKey="count" stroke="#82ca9d" name="Orders" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <div className="charts-row">
+            {analytics.salesByMonth && analytics.salesByMonth.length > 0 && (
+              <div className="chart-card">
+                <h4>Sales Over Time</h4>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={analytics.salesByMonth}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="total" stroke="#4f46e5" name="Revenue" />
+                    <Line type="monotone" dataKey="count" stroke="#10b981" name="Orders" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
-    {analytics.topProducts && analytics.topProducts.length > 0 && (
-            <div className="chart-container">
-              <h3>Top Selling Products</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics.topProducts}>
-                  <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="productName" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="totalSold" fill="#8884d8" name="Units Sold" />
-                  <Bar dataKey="totalRevenue" fill="#82ca9d" name="Revenue (Rs)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
+            {analytics.topProducts && analytics.topProducts.length > 0 && (
+              <div className="chart-card">
+                <h4>Top Selling Products</h4>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={analytics.topProducts}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="productName" angle={-30} textAnchor="end" height={80} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="totalSold" fill="#4f46e5" name="Units Sold" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
-      <div className="products-section">
-        <h3>All Products</h3>
+      <section className="products-section">
+        <div className="products-header">
+          <h3>All Products</h3>
+          <p className="muted">Manage your catalog — edit, feature or remove products.</p>
+        </div>
+
         <div className="products-grid">
-        {products.map(p => (
-            <div key={p._id} className="admin-product-card">
-              <div className="product-image">
+          {products.map(p => (
+            <article key={p._id} className="admin-product-card">
+              <div className="card-media">
                 {(() => {
                   const raw = p.images?.[0] || UPLOAD_FALLBACK[p.slug] || null;
                   const src = raw ? resolveImageUrl(raw) : null;
                   return src ? (
-                    <img src={src} alt={p.name} title={p.name} onError={(e) => { const { local, remote } = resolveImageSrc(raw.startsWith('/') ? raw : `/uploads/${raw}`); if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src = ''; }} />
+                    <img
+                      src={src}
+                      alt={p.name}
+                      title={p.name}
+                      loading="lazy"
+                      onError={(e) => {
+                        try {
+                          const { local, remote } = resolveImageSrc(raw.startsWith('/') ? raw : `/uploads/${raw}`);
+                          // try remote backend URL if local public URL failed
+                          const candidates = [];
+                          if (remote) candidates.push(remote);
+                          // also try a decoded variant in case encoding issues exist
+                          try { candidates.push(decodeURI(remote)); } catch (error_) { console.debug('decodeURI failed', error_); }
+                          // finally try the local path again
+                          if (local) candidates.push(local);
+
+                          for (const c of candidates) {
+                            if (!c) continue;
+                            if (e.currentTarget.src === c) continue;
+                            e.currentTarget.src = c;
+                            return;
+                          }
+                        } catch (error_) {
+                          console.debug('image onError candidates failed', error_);
+                        }
+                        // last resort: use an inline SVG placeholder
+                        e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">Image not available</text></svg>';
+                      }}
+                    />
                   ) : (
                     <div className="placeholder-img">No Image</div>
                   );
                 })()}
+                {p.featured && <span className="badge-featured">Featured</span>}
               </div>
-              <div className="product-info">
-            <h4>{p.name}</h4>
-                <p className="price">Rs {p.price}</p>
-                <p className="stock">Stock: {p.stock}</p>
-                <p className="category">Category: {p.category || 'Uncategorized'}</p>
-              </div>
-              <div className="product-actions">
-                <Link to={`/admin/edit/${p._id}`} className="btn-edit">Edit</Link>
-                <a className="btn-view" href={`/product/${p.slug}`} target="_blank" rel="noreferrer">View</a>
-                <button onClick={() => toggleFeatured(p._id, p.featured)} className={p.featured ? 'btn-featured active' : 'btn-featured'}>
-                  {p.featured ? '★ Featured' : '☆ Feature'}
-                </button>
-                <button onClick={() => remove(p._id)} className="btn-delete">Delete</button>
-            </div>
-          </div>
-        ))}
-        </div>
-      </div>
 
-  {/* uploads gallery removed */}
+              <div className="card-body">
+                <h4 className="card-title">{p.name}</h4>
+                <div className="product-meta">
+                  <div className="price">Rs {p.price}</div>
+                  <div className="stock">Stock: {p.stock}</div>
+                </div>
+                <div className="product-actions">
+                  <Link to={`/admin/edit/${p._id}`} className="btn-edit">Edit</Link>
+                  <a className="btn-view" href={`/product/${p.slug}`} target="_blank" rel="noreferrer">View</a>
+                  <button onClick={() => toggleFeatured(p._id, p.featured)} className={p.featured ? 'btn-featured active' : 'btn-featured'}>
+                    {p.featured ? '★' : '☆'}
+                  </button>
+                  <button onClick={() => remove(p._id)} className="btn-delete">Delete</button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

@@ -42,6 +42,25 @@ export default function ProductCard({ p }) {
     // prevent the outer card link/navigation
     e?.preventDefault();
     e?.stopPropagation();
+    // Require user to be logged in to add to cart
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      if (!user) {
+        // Ask user to login and preserve current location so they can return
+        if (confirm('You must be logged in to add items to cart. Go to login page now?')) {
+          const returnUrl = encodeURIComponent(window.location.pathname + (p && p.slug ? `?product=${p.slug}` : ''));
+          navigate(`/login?next=${returnUrl}`);
+        }
+        return;
+      }
+    } catch (err) {
+      // if localStorage parse fails, treat as not logged in
+      if (confirm('You must be logged in to add items to cart. Go to login page now?')) {
+        const returnUrl = encodeURIComponent(window.location.pathname + (p && p.slug ? `?product=${p.slug}` : ''));
+        navigate(`/login?next=${returnUrl}`);
+      }
+      return;
+    }
     if (p.stock === 0) { alert('This product is out of stock'); return; }
     try {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');

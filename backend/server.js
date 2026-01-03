@@ -71,6 +71,17 @@ if (process.env.NODE_ENV === 'production') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Lightweight request logger to help reproduce and capture incoming requests in dev
+app.use((req, res, next) => {
+  try {
+    const remote = req.ip || req.connection?.remoteAddress || 'unknown';
+    console.log(`[req] ${new Date().toISOString()} - ${req.method} ${req.originalUrl} from ${remote}`);
+  } catch (e) {
+    // avoid crashing the app if logging fails
+  }
+  return next();
+});
+
 // Serve uploaded files from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -90,7 +101,8 @@ if (pgProductsRouter) {
 app.get('/', (req, res) => res.send('API running'));
 
 // Start server with an error handler to gracefully report listen errors
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const LISTEN_HOST = process.env.LISTEN_HOST || '0.0.0.0';
+const server = app.listen(PORT, LISTEN_HOST, () => console.log(`Server running on ${LISTEN_HOST}:${PORT}`));
 
 server.on('error', (err) => {
   if (err && err.code === 'EADDRINUSE') {

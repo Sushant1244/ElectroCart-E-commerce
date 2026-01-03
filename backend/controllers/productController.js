@@ -43,7 +43,8 @@ exports.createProduct = async (req, res) => {
       price: Number(price),
       originalPrice: originalPrice ? Number(originalPrice) : undefined,
       category,
-      stock: Number(stock) || 0,
+    // use countInStock for PG model while keeping 'stock' in response via adapter
+    countInStock: Number(stock) || 0,
       images,
       slug,
       featured: featured === 'true' || featured === true,
@@ -51,6 +52,7 @@ exports.createProduct = async (req, res) => {
     };
     
   const product = await adapter.Product.create(productData);
+  // adapter will normalize and include 'stock' property for frontend
   res.json(product);
   } catch (e) {
   // Log full error for diagnostics
@@ -94,6 +96,12 @@ exports.updateProduct = async (req, res) => {
       else update.images = bodyImages;
     }
     
+  // If the frontend sent 'stock', map it to countInStock for DB
+  if (update.stock !== undefined && update.countInStock === undefined) {
+    update.countInStock = Number(update.stock);
+    delete update.stock;
+  }
+
   const product = await adapter.Product.findByIdAndUpdate(id, update);
     res.json(product);
   } catch (e) {

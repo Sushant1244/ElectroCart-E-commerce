@@ -3,40 +3,53 @@ const adapter = require('../models/adapter');
 exports.createOrder = async (req, res) => {
   try {
     const { items, shippingAddress, total, paymentMethod } = req.body;
-    // Determine paid status: COD remains unpaid until delivery (false), online methods marked paid for demo
-    const paid = paymentMethod && paymentMethod !== 'cod';
 
+    // Require authenticated user
+    if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+
+    // coerce user id from different shapes (adapter may use id or _id)
+    let userId = req.user._id ?? req.user.id ?? null;
+    if (typeof userId === 'string' && /^\d+$/.test(userId)) userId = Number(userId);
+
+    // Basic payload validation
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ message: 'Order items required' });
+
+    // Determine paid status: COD remains unpaid until delivery (false), online methods marked paid for demo
+    const paid = paymentMethod && String(paymentMethod).toLowerCase() !== 'cod';
+
+    const nowIso = new Date().toISOString();
     const orderData = {
-      userId: req.user._id,
+      userId,
       orderItems: items,
-      shippingAddress,
-      totalPrice: total,
+      shippingAddress: shippingAddress || null,
+      totalPrice: total || 0,
       paymentMethod: paymentMethod || 'cod',
       isPaid: !!paid,
       status: 'processing',
       deliveryStatus: 'pending',
-      paymentResult: paid ? { provider: paymentMethod, paidAt: new Date() } : null,
-      // use a consistent `timestamp` field so frontend can render updates reliably
-      deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed', timestamp: new Date() }]
+      paymentResult: paid ? { provider: paymentMethod, paidAt: nowIso } : null,
+      // use a consistent `timestamp` (ISO string) so frontend can render updates reliably
+      deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed', timestamp: nowIso }]
     };
+
     const order = await adapter.Order.create(orderData);
-    res.json(order);
+    return res.status(201).json(order);
   } catch (e) {
-  try { console.error('createOrder error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
-  res.status(500).json({ message: e.message });
+  try { console.error('createOrder error:', e?.stack ?? e); } catch (error_) { console.error('Failed to log error', error_); }
+  res.status(500).json({ message: e?.message ?? '' });
   }
 };
 
 exports.getMyOrders = async (req, res) => {
   try {
-  const userId = req.user && (req.user._id || req.user.id);
-  // coerce numeric ids to number when possible to match PG schema
-  const qUserId = typeof userId === 'string' && /^[0-9]+$/.test(userId) ? Number(userId) : userId;
-  const orders = await adapter.Order.find({ userId: qUserId });
-  res.json(orders);
+    const userId = req.user && (req.user._id || req.user.id);
+    // coerce numeric ids to number when possible to match PG schema
+    const qUserId = typeof userId === 'string' && /\d+/.test(userId) ? Number(userId) : userId;
+    const orders = await adapter.Order.find({ userId: qUserId });
+    res.json(orders);
   } catch (e) {
-  try { console.error('getMyOrders error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
-  res.status(500).json({ message: e.message });
+    try { console.error('getMyOrders error:', e?.stack ?? e); } catch (error_) { console.error('Failed to log error', error_); }
+    res.status(500).json({ message: e?.message ?? '' });
   }
 };
 
@@ -45,8 +58,8 @@ exports.getAllOrders = async (req, res) => {
   const orders = await adapter.Order.findAll();
   res.json(orders);
   } catch (e) {
-  try { console.error('getAllOrders error:', e && e.stack ? e.stack : e); } catch (logErr) { console.error('Failed to log error', logErr); }
-  res.status(500).json({ message: e.message });
+    try { console.error('getAllOrders error:', e?.stack ?? e); } catch (error_) { console.error('Failed to log error', error_); }
+    res.status(500).json({ message: e?.message ?? '' });
   }
 };
 
@@ -92,7 +105,7 @@ exports.getOrderTracking = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Order not found' });
     
     // If user is not admin, verify they own the order
-  if (!req.user.isAdmin && order.userId && order.userId.toString() !== req.user._id.toString()) {
+  if (!req.user?.isAdmin && order.userId && req.user?._id && order.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
     
