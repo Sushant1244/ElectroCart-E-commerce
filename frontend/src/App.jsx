@@ -14,6 +14,8 @@ import ResetPassword from './pages/ResetPassword';
 import Payment from './pages/Payment';
 import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+// AdminWelcome removed; consolidate to single public welcome page at /welcome
+import UserWelcome from './pages/UserWelcome';
 import Orders from './pages/Orders';
 import AdminAddProduct from './pages/admin/AdminAddProduct';
 import AdminEditProduct from './pages/admin/AdminEditProduct';
@@ -82,6 +84,8 @@ function App(){
           <Route path="/payment" element={<Payment />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/admin" element={ user?.isAdmin ? <AdminDashboard /> : <Navigate to="/login" /> } />
+          {/* admin welcome route removed to keep a single /welcome page */}
+          <Route path="/welcome" element={<UserWelcome />} />
           <Route path="/admin/add" element={ user?.isAdmin ? <AdminAddProduct /> : <Navigate to="/login" /> } />
           <Route path="/admin/edit/:id" element={ user?.isAdmin ? <AdminEditProduct /> : <Navigate to="/login" /> } />
           <Route path="/admin/orders" element={ user?.isAdmin ? <AdminOrders /> : <Navigate to="/login" /> } />
