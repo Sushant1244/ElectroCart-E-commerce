@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import API from '../../api/api';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     loadOrders();
@@ -14,7 +15,7 @@ export default function AdminOrders() {
   const loadOrders = async () => {
     try {
       const res = await API.get('/orders');
-      setOrders(res.data);
+      setOrders(res.data || []);
     } catch (err) {
       console.error(err);
       alert('Failed to load orders');
@@ -22,6 +23,18 @@ export default function AdminOrders() {
       setLoading(false);
     }
   };
+
+  // If navigation included openOrderId in state, open that order once orders are loaded
+  useEffect(() => {
+    const openId = location?.state?.openOrderId;
+    if (!openId) return;
+    if (orders && orders.length) {
+      const found = orders.find(o => String(o._id || o.id) === String(openId));
+      if (found) setSelectedOrder(found);
+      // clear history state to avoid reopening on refresh/back
+      try { window.history.replaceState({}, document.title); } catch (e) {}
+    }
+  }, [location, orders]);
 
   const updateOrderStatus = async (orderId, status, deliveryStatus, trackingNumber) => {
     try {
@@ -57,7 +70,7 @@ export default function AdminOrders() {
             </div>
             
             <div className="order-info">
-              <p><strong>Customer:</strong> {order.user?.name || order.user?.email || 'N/A'}</p>
+              <p><strong>Customer:</strong> {order.customer || order.user?.name || order.user?.email || 'N/A'}</p>
               <p><strong>Total:</strong> Rs {order.total?.toFixed(2)}</p>
               <p><strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
               <p><strong>Delivery Status:</strong> 

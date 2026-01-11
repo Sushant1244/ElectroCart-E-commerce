@@ -7,6 +7,12 @@ export default function Payment() {
   const [method, setMethod] = useState('cod');
   const [loading, setLoading] = useState(false);
 
+  // detect stored user to block admins from placing orders in the regular checkout flow
+  const storedUser = (() => {
+    try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch (e) { return null; }
+  })();
+  const isAdminUser = !!(storedUser && (storedUser.isAdmin === true || String(storedUser.isAdmin) === 'true'));
+
   const cart = (() => {
     try { return JSON.parse(localStorage.getItem('cart') || '[]'); } catch (e) { return []; }
   })();
@@ -17,13 +23,20 @@ export default function Payment() {
   const total = cart.reduce((s,c) => s + (c.price || 0) * (c.quantity || 1), 0);
 
   const placeOrder = async () => {
-    if (!shippingAddress) return alert('Please save a shipping address first');
+  if (isAdminUser) return alert('Admin users are not allowed to place purchases via the public checkout. Use the Admin → Create Order tool to create orders for customers.');
+  if (!shippingAddress) return alert('Please save a shipping address first');
     setLoading(true);
     try {
       const payload = { items: cart, shippingAddress, total, paymentMethod: method };
-      await API.post('/orders', payload);
+      const res = await API.post('/orders', payload);
+      // If order was created, navigate to orders page and include id so user can track it
+      const created = res?.data;
       localStorage.removeItem('cart');
-      navigate('/');
+      if (created && created._id) {
+        navigate('/orders', { state: { justPlacedOrderId: created._id } });
+      } else {
+        navigate('/');
+      }
       alert('Order placed successfully');
     } catch (err) {
       console.error('Place order failed', err);

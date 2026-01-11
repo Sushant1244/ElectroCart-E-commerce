@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/api';
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [tracking, setTracking] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const loadOrders = async () => {
     setLoading(true);
@@ -32,7 +35,30 @@ export default function Orders() {
     }
   };
 
+  const loadTracking = async (orderId) => {
+    setTrackingLoading(true);
+    try {
+      const res = await API.get(`/orders/track/${orderId}`);
+      setTracking(res.data || null);
+    } catch (err) {
+      console.error('Failed to load tracking', err);
+      alert(err?.response?.data?.message || 'Failed to load tracking information');
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
   useEffect(() => { loadOrders(); }, []);
+
+  // If we navigated here right after placing an order, auto-open tracking
+  useEffect(() => {
+    const justPlacedId = location?.state?.justPlacedOrderId;
+    if (justPlacedId) {
+      // clear state in history to avoid reopening on back/refresh
+      try { window.history.replaceState({}, document.title); } catch (e) {}
+      loadTracking(justPlacedId);
+    }
+  }, [location]);
 
     if (loading) return <div className="loading">Loading your orders...</div>;
 
@@ -81,9 +107,30 @@ export default function Orders() {
                   <div key={it._id || it.id || it.product?.id || idx}>{it.product?.name || it.name || 'Product'} - Qty: {it.quantity} - Rs {it.price}</div>
                 ))}
               </div>
+              <div style={{marginTop:12}}>
+                <button className="btn" onClick={() => loadTracking(o._id)}>Track delivery</button>
+              </div>
             </div>
           ))}
         </div>
+        {tracking && (
+          <div className="modal-overlay" onClick={() => setTracking(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>Tracking for Order #{String(tracking._id).slice(-8)}</h3>
+              <p><strong>Tracking number:</strong> {tracking.trackingNumber || '—'}</p>
+              <div className="tracking-timeline">
+                {(tracking.deliveryUpdates || []).map((u, i) => (
+                  <div key={i} className="timeline-item">
+                    <div className="ti-left">{new Date(u.timestamp || u.date || u.createdAt || Date.now()).toLocaleString()}</div>
+                    <div className="ti-mid">{u.status}</div>
+                    <div className="ti-right">{u.location || ''}<div className="muted small">{u.note}</div></div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:12}}><button className="btn" onClick={() => setTracking(null)}>Close</button></div>
+            </div>
+          </div>
+        )}
       </div>
     );
 }

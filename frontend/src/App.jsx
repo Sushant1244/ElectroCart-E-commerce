@@ -20,6 +20,7 @@ import Orders from './pages/Orders';
 import AdminAddProduct from './pages/admin/AdminAddProduct';
 import AdminEditProduct from './pages/admin/AdminEditProduct';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminCreateOrder from './pages/admin/AdminCreateOrder';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { setAuthToken } from './api/api';
@@ -89,6 +90,7 @@ function App(){
           <Route path="/admin/add" element={ user?.isAdmin ? <AdminAddProduct /> : <Navigate to="/login" /> } />
           <Route path="/admin/edit/:id" element={ user?.isAdmin ? <AdminEditProduct /> : <Navigate to="/login" /> } />
           <Route path="/admin/orders" element={ user?.isAdmin ? <AdminOrders /> : <Navigate to="/login" /> } />
+          <Route path="/admin/create-order" element={ user?.isAdmin ? <AdminCreateOrder /> : <Navigate to="/login" /> } />
           <Route path="/orders" element={ <Orders /> } />
           <Route path="/contact" element={<div className="container"><h1>Contact Us</h1><p>Email: info@elecrocart.com | Phone: +1234567890</p></div>} />
         </Routes>

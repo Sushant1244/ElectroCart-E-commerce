@@ -11,11 +11,14 @@ const api = axios.create({
   // from admin forms work correctly and let the browser set the boundary.
   withCredentials: false,
 });
-
 export function setAuthToken(token) {
   if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   else delete api.defaults.headers.common['Authorization'];
 }
+
+// Initialize Authorization header from localStorage token (so callers don't need to call setAuthToken)
+const initialToken = localStorage.getItem('token');
+if (initialToken) api.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
 
 // Intercept 401 responses and clear auth so UI can prompt login
 api.interceptors.response.use(

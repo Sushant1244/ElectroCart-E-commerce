@@ -114,30 +114,81 @@ if (pgConfig && pgConfig.Product) {
   adapter.Order = {
     create: async (data) => {
       const inst = await PgOrder.create(data);
-      const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || [];
+  const obj = inst.toJSON(); obj._id = obj.id; obj.id = obj.id || obj._id; obj.items = obj.orderItems || obj.items || [];
       // normalize deliveryUpdates timestamps
       if (Array.isArray(obj.deliveryUpdates)) {
         obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null }));
       }
+  // attach user info when available
+  if (obj.userId && PgUser) {
+        try {
+          const uInst = await PgUser.findByPk(obj.userId);
+          if (uInst) { const u = uInst.toJSON(); delete u.passwordHash; u._id = u.id; obj.user = u; }
+        } catch (e) { /* ignore */ }
+      }
+  // provide convenient top-level customer/email fields for admin UI
+  obj.customer = obj.user?.name || obj.user?.fullName || obj.shippingAddress?.fullName || obj.shippingAddress?.name || null;
+  obj.email = obj.user?.email || obj.shippingAddress?.email || null;
+  // normalize total and date for frontend
+  obj.total = obj.totalPrice ?? obj.total ?? 0;
+  obj.date = obj.createdAt || obj.date || null;
       return obj;
     },
     find: async (query) => {
       const rows = await PgOrder.findAll({ where: query });
-  return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; if (Array.isArray(o.deliveryUpdates)) { o.deliveryUpdates = o.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); } return o; });
+      return Promise.all(rows.map(async r => {
+    const o = r.toJSON(); o._id = o.id; o.id = o.id || o._id; o.items = o.orderItems || o.items || [];
+        if (Array.isArray(o.deliveryUpdates)) { o.deliveryUpdates = o.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+  if (o.userId && PgUser) {
+          try { const uInst = await PgUser.findByPk(o.userId); if (uInst) { const u = uInst.toJSON(); delete u.passwordHash; u._id = u.id; o.user = u; } } catch (e) {}
+        }
+  // top-level convenience fields
+  o.customer = o.user?.name || o.user?.fullName || o.shippingAddress?.fullName || o.shippingAddress?.name || null;
+  o.email = o.user?.email || o.shippingAddress?.email || null;
+  o.total = o.totalPrice ?? o.total ?? 0;
+  o.date = o.createdAt || o.date || null;
+  return o;
+      }));
     },
     findById: async (id) => {
       const inst = await PgOrder.findByPk(id);
-  if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || [];
-  if (Array.isArray(obj.deliveryUpdates)) { obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+    if (!inst) return null; const obj = inst.toJSON(); obj._id = obj.id; obj.id = obj.id || obj._id; obj.items = obj.orderItems || obj.items || [];
+      if (Array.isArray(obj.deliveryUpdates)) { obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+  if (obj.userId && PgUser) {
+        try { const uInst = await PgUser.findByPk(obj.userId); if (uInst) { const u = uInst.toJSON(); delete u.passwordHash; u._id = u.id; obj.user = u; } } catch (e) {}
+      }
+  obj.customer = obj.user?.name || obj.user?.fullName || obj.shippingAddress?.fullName || obj.shippingAddress?.name || null;
+  obj.email = obj.user?.email || obj.shippingAddress?.email || null;
+  obj.total = obj.totalPrice ?? obj.total ?? 0;
+  obj.date = obj.createdAt || obj.date || null;
   return obj;
     },
     findAll: async () => {
-  const rows = await PgOrder.findAll(); return rows.map(r => { const o = r.toJSON(); o._id = o.id; o.items = o.orderItems || o.items || []; if (Array.isArray(o.deliveryUpdates)) { o.deliveryUpdates = o.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); } return o; });
+      const rows = await PgOrder.findAll();
+      return Promise.all(rows.map(async r => {
+      const o = r.toJSON(); o._id = o.id; o.id = o.id || o._id; o.items = o.orderItems || o.items || [];
+        if (Array.isArray(o.deliveryUpdates)) { o.deliveryUpdates = o.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+  if (o.userId && PgUser) {
+          try { const uInst = await PgUser.findByPk(o.userId); if (uInst) { const u = uInst.toJSON(); delete u.passwordHash; u._id = u.id; o.user = u; } } catch (e) {}
+        }
+  o.customer = o.user?.name || o.user?.fullName || o.shippingAddress?.fullName || o.shippingAddress?.name || null;
+  o.email = o.user?.email || o.shippingAddress?.email || null;
+    o.total = o.totalPrice ?? o.total ?? 0;
+    o.date = o.createdAt || o.date || null;
+  return o;
+      }));
     },
     findByIdAndUpdate: async (id, update) => {
       const inst = await PgOrder.findByPk(id);
-  if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.items = obj.orderItems || obj.items || [];
-  if (Array.isArray(obj.deliveryUpdates)) { obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+      if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.id = obj.id || obj._id; obj.items = obj.orderItems || obj.items || [];
+      if (Array.isArray(obj.deliveryUpdates)) { obj.deliveryUpdates = obj.deliveryUpdates.map(u => ({ ...u, timestamp: u.timestamp || u.date || null })); }
+  if (obj.userId && PgUser) {
+        try { const uInst = await PgUser.findByPk(obj.userId); if (uInst) { const u = uInst.toJSON(); delete u.passwordHash; u._id = u.id; obj.user = u; } } catch (e) {}
+      }
+  obj.customer = obj.user?.name || obj.user?.fullName || obj.shippingAddress?.fullName || obj.shippingAddress?.name || null;
+  obj.email = obj.user?.email || obj.shippingAddress?.email || null;
+  obj.total = obj.totalPrice ?? obj.total ?? 0;
+  obj.date = obj.createdAt || obj.date || null;
   return obj;
     }
   };
