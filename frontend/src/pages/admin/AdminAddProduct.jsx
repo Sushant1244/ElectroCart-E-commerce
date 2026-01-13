@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import UploadsPicker from '../../components/UploadsPicker';
 import API, { setAuthToken } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
+import CATEGORIES from '../../constants/categories';
 
 export default function AdminAddProduct(){
   const [name, setName] = useState('');
@@ -180,7 +181,12 @@ export default function AdminAddProduct(){
         
         <div className="form-group">
           <label>Category</label>
-          <input value={category} onChange={e=>setCategory(e.target.value)} placeholder="Category" />
+          <select value={category} onChange={e=>setCategory(e.target.value)} className="filter">
+            <option value="">Select a category</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">

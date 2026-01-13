@@ -3,6 +3,7 @@ import API from '../../api/api';
 import { resolveImageSrc } from '../../utils/resolveImage';
 import UploadsPicker from '../../components/UploadsPicker';
 import { useParams, useNavigate } from 'react-router-dom';
+import CATEGORIES from '../../constants/categories';
 
 export default function AdminEditProduct(){
   const { id } = useParams();
@@ -131,7 +132,12 @@ export default function AdminEditProduct(){
         
         <div className="form-group">
           <label>Category</label>
-          <input value={category} onChange={e=>setCategory(e.target.value)} placeholder="Category" />
+          <select value={category} onChange={e=>setCategory(e.target.value)} className="filter">
+            <option value="">Select a category</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">

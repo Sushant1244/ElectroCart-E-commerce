@@ -1949,6 +1949,32 @@ textarea {
 .delivery-status.out_for_delivery { background: #fed7aa; color: #9a3412; }
 .delivery-status.delivered { background: #d1fae5; color: #065f46; }
 
+/* Inline status select that visually matches the badge styles */
+.status-badge-select {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.status-badge-select.pending { background: #fef3c7; color: #92400e; }
+.status-badge-select.processing { background: #dbeafe; color: #1e40af; }
+.status-badge-select.shipped { background: #ddd6fe; color: #5b21b6; }
+.status-badge-select.out_for_delivery { background: #fed7aa; color: #9a3412; }
+.status-badge-select.delivered { background: #d1fae5; color: #065f46; }
+.status-badge-select.completed { background: #d1fae5; color: #065f46; }
+.status-badge-select.cancelled { background: #fee2e2; color: #991b1b; }
+
+/* small caret indicator aligned to the right of the select */
+.status-badge-select { padding-right: 28px; position: relative; }
+.status-badge-select::-ms-expand { display: none; }
+.status-badge-select::after { content: '' }
+
 .order-info p {
   margin: 0.5rem 0;
   color: #64748b;

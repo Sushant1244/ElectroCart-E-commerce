@@ -7,6 +7,8 @@ export default function ProductPage(){
   const { slug } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(undefined);
+  const [imageUrls, setImageUrls] = useState([]); // array of { local, remote, url }
+  const [mainImageObj, setMainImageObj] = useState(null); // { local, remote, url }
   // Demo fallback products used when backend is unavailable
   const DEMOS = {
     'alpha-watch-ultra': { _id: 'demo1', name: 'Alpha Watch ultra', slug: 'alpha-watch-ultra', price: 3500, images: ['/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png'], stock: 10, featured: true, description: 'Demo Alpha Watch' },
@@ -56,7 +58,63 @@ export default function ProductPage(){
   return { local, remote };
   };
 
-  // no-op: fallback map is defined below as FALLBACK
+  // Build resolved image URLs and maintain a main image state so thumbnails can swap it
+  useEffect(() => {
+    if (!product) {
+      setImageUrls([]);
+      setMainImageObj(null);
+      return;
+    }
+    const imgs = [];
+    // product.images may be an array, a JSON-stringified array, or a CSV/string.
+    let rawImgs = product.images;
+    if (!rawImgs) rawImgs = [];
+    if (typeof rawImgs === 'string') {
+      // try JSON parse first
+      try { const parsed = JSON.parse(rawImgs); if (Array.isArray(parsed)) rawImgs = parsed; else rawImgs = [rawImgs]; } catch (e) {
+        // fallback: split by comma
+        rawImgs = rawImgs.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    if (!Array.isArray(rawImgs)) rawImgs = [rawImgs];
+    for (let im of rawImgs) {
+      if (!im) continue;
+      if (Array.isArray(im)) im = im[0];
+      if (typeof im === 'string' && im.includes(',')) im = im.split(',')[0];
+      im = String(im).trim();
+      if (!im) continue;
+      imgs.push(im.startsWith('/') ? im : `/uploads/${im}`);
+    }
+    // always include fallback as a last option
+    const fallback = FALLBACK[product.slug] || FALLBACK['alpha-watch-series'] || FALLBACK['alpha-watch-ultra'];
+    if ((!imgs || imgs.length === 0) && fallback) imgs.push(fallback);
+
+    const resolved = imgs.map(i => {
+      try {
+        const { local, remote } = resolveImageSrc(i.startsWith('/') ? i : `/uploads/${i}`);
+        return { local, remote, url: (local || remote || i) };
+      } catch (e) { return { local: null, remote: null, url: i }; }
+    });
+    setImageUrls(resolved);
+    setMainImageObj(resolved[0] || null);
+  }, [product, slug]);
+
+  // Fallbacks for known demo slugs (used when product.images is empty)
+  const FALLBACK = {
+    'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+    'alpha-watch-series': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
+    'wireless-headphones': '/uploads/Wireless Headphones.png',
+    'homepad-mini': '/uploads/Homepad mini.png',
+    'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
+    'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
+    'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png',
+    // extra demo fallbacks
+    'music-magnet-headphone': '/uploads/Music magnet Headphone.jpg',
+    'security-smart-camera': '/uploads/Security Smart Camera.png',
+    'smart-box': '/uploads/Smart Box.png',
+    'mini-speaker': '/uploads/Mini Speaker.png',
+    'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png'
+  };
 
   if (product === undefined) return <div className="loading">Loading...</div>;
   if (product === null) {
@@ -91,23 +149,7 @@ export default function ProductPage(){
     );
   }
 
-  // choose first image; if none, use fallback map based on slug
-  const FALLBACK = {
-    'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
-    'alpha-watch-series': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
-    'wireless-headphones': '/uploads/Wireless Headphones.png',
-    'homepad-mini': '/uploads/Homepad mini.png',
-    'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
-    'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
-    'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png'
-  ,
-  // extra demo fallbacks
-  'music-magnet-headphone': '/uploads/Music magnet Headphone.jpg',
-  'security-smart-camera': '/uploads/Security Smart Camera.png',
-  'smart-box': '/uploads/Smart Box.png',
-  'mini-speaker': '/uploads/Mini Speaker.png',
-  'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png'
-  };
+  // choose first image; if none, use fallback map based on slug (FALLBACK is defined above)
 
   // If product has images use first. Otherwise try slug fallback, then name-based fallback for common words like 'watch'.
   // choose first image; if none, use fallback map based on slug
@@ -163,25 +205,46 @@ export default function ProductPage(){
     <div className="product-page">
       <div className="images">
         <img
-          src={resolvedSrc}
+          src={(mainImageObj && mainImageObj.url) || resolvedSrc}
           alt={product.name}
           className="main-product-image"
           loading="lazy"
-          title={resolvedSrc}
+          title={(mainImageObj && mainImageObj.url) || resolvedSrc}
           onError={(e) => {
             try {
-              // if current src was local and remote is available, try remote
-              if (mainRemote && e.currentTarget.src !== mainRemote) {
-                e.currentTarget.src = mainRemote;
+              if (mainImageObj && mainImageObj.local && mainImageObj.remote && e.currentTarget.src === mainImageObj.local) {
+                e.currentTarget.src = mainImageObj.remote;
                 return;
               }
-            } catch (err) {
-              // ignore
-            }
+            } catch (err) {}
             e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="520" height="400"><rect width="100%" height="100%" fill="%23fafafa"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="20">No image</text></svg>';
             e.currentTarget.onerror = null;
           }}
         />
+
+        {imageUrls && imageUrls.length > 1 && (
+          <div className="thumbnails" style={{display: 'flex', gap: 8, marginTop: 12}}>
+            {imageUrls.map((obj, idx) => (
+              <img
+                key={(obj.url || '') + idx}
+                src={obj.url}
+                alt={`${product.name} ${idx+1}`}
+                className={`thumb ${mainImageObj && obj.url === mainImageObj.url ? 'active' : ''}`}
+                style={{width:72,height:72,objectFit:'cover',borderRadius:6,border:(mainImageObj && obj.url===mainImageObj.url)? '2px solid #2563eb':'1px solid #eee'}}
+                onClick={() => setMainImageObj(obj)}
+                onError={(e) => {
+                  try {
+                    if (obj.local && obj.remote && e.currentTarget.src === obj.local) {
+                      e.currentTarget.src = obj.remote;
+                      return;
+                    }
+                  } catch (err) {}
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
       <div className="info">
         {product.featured && <span className="featured-badge">⭐ Featured Product</span>}

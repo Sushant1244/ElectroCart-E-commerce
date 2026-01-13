@@ -150,7 +150,13 @@ export default function AdminDashboard() {
   });
 
   // Derived stats with safe fallbacks
-  const totalRevenue = Number(analytics?.totalSales) || (analytics?.salesByMonth ? analytics.salesByMonth.reduce((s, r) => s + (Number(r.total) || 0), 0) : 0);
+  // Prefer analytics.totalSales when present. If analytics is not available, fall back
+  // to summing salesByMonth (if provided) or summing the loaded orders as a last resort.
+  const totalRevenue = (
+    (analytics && typeof analytics.totalSales === 'number' ? Number(analytics.totalSales) : null) ??
+    (analytics && Array.isArray(analytics.salesByMonth) ? analytics.salesByMonth.reduce((s, r) => s + (Number(r.total) || 0), 0) : null) ??
+    (orders && orders.length ? orders.reduce((s, o) => s + (Number(o.total) || 0), 0) : 0)
+  );
   const totalOrders = analytics?.totalOrders || (orders.length || 0);
   // Top products: prefer analytics payload; otherwise derive from product.sold; if still empty, derive from recent orders
   let topProducts = analytics?.topProducts || products.slice().sort((a, b) => (b.sold || 0) - (a.sold || 0)).slice(0, 6).map(p => ({ productId: p._id, productName: p.name, totalSold: p.sold || 0, price: p.price, image: p.images?.[0] || UPLOAD_FALLBACK[p.slug] }));

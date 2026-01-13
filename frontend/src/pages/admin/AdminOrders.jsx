@@ -61,60 +61,55 @@ export default function AdminOrders() {
         <h2>Order Management & Delivery Tracking</h2>
       </div>
 
-      <div className="orders-grid">
-        {orders.map(order => (
-          <div key={order._id} className="order-card">
-            <div className="order-header">
-              <h3>Order #{String(order._id).slice(-8)}</h3>
-              <span className={`status-badge ${order.status}`}>{order.status}</span>
-            </div>
-            
-            <div className="order-info">
-              <p><strong>Customer:</strong> {order.customer || order.user?.name || order.user?.email || 'N/A'}</p>
-              <p><strong>Total:</strong> Rs {order.total?.toFixed(2)}</p>
-              <p><strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
-              <p><strong>Delivery Status:</strong> 
-                <span className={`delivery-status ${order.deliveryStatus || 'pending'}`}>
-                  {order.deliveryStatus || 'pending'}
-                </span>
-              </p>
-              {order.trackingNumber && (
-                <p><strong>Tracking:</strong> {order.trackingNumber}</p>
-              )}
-            </div>
-
-            <div className="order-items">
-              <strong>Items:</strong>
-              {order.items?.map((item, idx) => (
-                <div key={idx} className="order-item">
-                  {item.product?.name || 'Product'} - Qty: {item.quantity} - Rs {item.price}
-                </div>
-              ))}
-            </div>
-
-            {order.deliveryUpdates && order.deliveryUpdates.length > 0 && (
-              <div className="delivery-timeline">
-                <strong>Delivery Updates:</strong>
-                {order.deliveryUpdates.map((update, idx) => (
-                  <div key={idx} className="timeline-item">
-                    <span className="timeline-date">{new Date(update.timestamp || update.date).toLocaleString()}</span>
-                    <span className="timeline-status">{update.status}</span>
-                    {update.location && <span className="timeline-location">{update.location}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="order-actions">
-              <button 
-                onClick={() => setSelectedOrder(order)}
-                className="btn-edit"
-              >
-                Update Status
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="orders-table-wrap">
+        <table className="orders-table full">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Email</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(order => (
+              <tr key={order._id}>
+                <td>{String(order._id).startsWith('ORD-') ? String(order._id) : `ORD-${String(order._id).slice(-3)}`}</td>
+                <td>{order.customer || order.user?.name || (order.user?.email || 'N/A')}</td>
+                <td>{order.email || order.user?.email || ''}</td>
+                <td>{typeof order.total === 'number' ? order.total.toLocaleString(undefined, {minimumFractionDigits:0}) : order.total}</td>
+                <td>
+                  <select
+                    className={`status-badge-select ${order.status || 'pending'}`}
+                    value={order.status || 'pending'}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      try {
+                        await updateOrderStatus(order._id, newStatus, order.deliveryStatus, order.trackingNumber);
+                      } catch (err) {}
+                    }}
+                    aria-label={`Order ${String(order._id).slice(-8)} status`}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="out_for_delivery">Out for Delivery</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </td>
+                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <button className="link" onClick={() => setSelectedOrder(order)}>View Details</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {selectedOrder && (
