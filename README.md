@@ -22,6 +22,16 @@ ElectroCart is a full-stack  e‑commerce application built to showcase a compac
 - `backend/` — Express API, serves `/api` routes and static `/uploads`
 - `frontend/public/uploads` and `backend/uploads` — product images used by the app
 
+## 📸 Screenshots
+
+Below are a few screenshots and sample product images used by the demo. The files are stored under `frontend/public/uploads` — open them directly in the repo or visit the running frontend to view full-size.
+
+<p align="center">
+	<img alt="Homepage banner" src="frontend/public/uploads/Iphone%20banner.png" width="680" style="margin:8px; border-radius:8px;" />
+	<img alt="Product - Wireless Headphones" src="frontend/public/uploads/Wireless%20Headphones.png" width="300" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
+	<img alt="Product - Homepad mini" src="frontend/public/uploads/Homepad%20mini.png" width="300" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
+</p>
+
 ---
 
 ## ⚡ Quick start (developer)
