@@ -48,7 +48,7 @@ export default function ProductPage(){
 
   const getImageUrl = (img) => {
   if (!img) return { local: null, remote: null };
-  // accept arrays or comma-separated values
+  // normalize if an array or CSV
   if (Array.isArray(img)) img = img[0];
   if (typeof img === 'string' && img.includes(',')) img = img.split(',')[0];
   img = String(img).trim();
@@ -110,6 +110,7 @@ export default function ProductPage(){
   };
 
   // If product has images use first. Otherwise try slug fallback, then name-based fallback for common words like 'watch'.
+  // choose first image; if none, use fallback map based on slug
   let mainImage = product.images?.[0] ?? FALLBACK[product.slug] ?? null;
   if (!mainImage && product.name && /watch/i.test(product.name)) {
     mainImage = FALLBACK['alpha-watch-series'] || FALLBACK['alpha-watch-ultra'] || null;

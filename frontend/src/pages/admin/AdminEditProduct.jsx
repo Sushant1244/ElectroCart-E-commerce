@@ -87,7 +87,13 @@ export default function AdminEditProduct(){
 
   return (
     <div className="admin-form-container">
-      <h2>Edit Product</h2>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+        <h2>Edit Product</h2>
+        <div style={{display:'flex', gap:8}}>
+          <button type="button" className="btn-outline" onClick={() => navigate('/admin')}>Dashboard</button>
+          <button type="button" className="btn-primary" onClick={() => navigate('/admin/add')}>Add Product</button>
+        </div>
+      </div>
       <form onSubmit={submit} className="admin-form">
         <div className="form-group">
           <label>Product Name</label>
