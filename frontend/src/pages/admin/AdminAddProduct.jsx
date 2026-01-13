@@ -12,6 +12,7 @@ export default function AdminAddProduct(){
   const [category, setCategory] = useState('');
   const [rating, setRating] = useState(5);
   const [images, setImages] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
   const navigate = useNavigate();
 
   const submit = async (e) => {
@@ -131,6 +132,26 @@ export default function AdminAddProduct(){
     }
   };
 
+  const onImagesChange = (filesOrArray) => {
+    setImages(filesOrArray);
+    // build previews if FileList or array of File
+    let arr = filesOrArray;
+    if (!arr) arr = [];
+    if (arr && typeof arr === 'object' && typeof arr.length === 'number' && !(Array.isArray(arr))) {
+      try { arr = Array.from(arr); } catch (err) { /* ignore */ }
+    }
+    const urls = [];
+    if (arr && arr.length && typeof arr[0] !== 'string') {
+      for (const f of arr) {
+        try { urls.push(URL.createObjectURL(f)); } catch (e) { /* ignore */ }
+      }
+    } else if (arr && arr.length && typeof arr[0] === 'string') {
+      // existing uploads selected - convert to preview src via uploads path
+      for (const s of arr) urls.push(s.startsWith('/uploads/') ? s : `/uploads/${s}`);
+    }
+    setPreviewUrls(urls);
+  };
+
   return (
     <div className="admin-form-container">
       <h2>Add New Product</h2>
@@ -164,11 +185,16 @@ export default function AdminAddProduct(){
         
         <div className="form-group">
           <label>Product Images</label>
-          <input type="file" multiple onChange={e=>setImages(e.target.files)} accept="image/*" />
+          <input type="file" multiple onChange={e=>onImagesChange(e.target.files)} accept="image/*" />
           <small>You can select multiple images (max 6)</small>
+          {previewUrls.length > 0 && (
+            <div style={{marginTop:10, display:'flex', gap:8}}>
+              {previewUrls.map((u, i) => (<img key={i} src={u} alt={`preview-${i}`} style={{width:72,height:72,objectFit:'cover',borderRadius:6,border:'1px solid #ddd'}} />))}
+            </div>
+          )}
           <div style={{marginTop: 10}}>
             <strong>Or choose from existing uploads</strong>
-            <UploadsPicker onSelect={(selected) => setImages(selected)} />
+            <UploadsPicker onSelect={(selected) => onImagesChange(selected)} />
           </div>
         </div>
         

@@ -1,16 +1,149 @@
-Server running on port 5001
+
+> ecommerce-backend@1.0.0 start
+> node server.js
+
+Server running on 0.0.0.0:5001
 Postgres (Sequelize) connected
-[mailer stub] sendMail called with: {
-  from: 'no-reply@electrocart.local',
-  to: 'test+cli@example.com',
-  subject: 'Welcome to ElectroCart',
-  text: 'Hi Test User,\n\nThanks for registering at ElectroCart!'
-}
-[mailer] sent [ 'test+cli@example.com' ]
-[mailer stub] sendMail called with: {
-  from: 'no-reply@electrocart.local',
-  to: 'sushantsha985@gmail.com',
-  subject: 'Welcome to ElectroCart',
-  text: 'Hi sushantshah,\n\nThanks for registering at ElectroCart!'
-}
-[mailer] sent [ 'sushantsha985@gmail.com' ]
+[req] 2026-01-13T03:54:36.102Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:09.614Z - GET /api/products/by-id/14 from 127.0.0.1
+[req] 2026-01-13T03:55:09.652Z - GET /api/uploads/list from 127.0.0.1
+[req] 2026-01-13T03:55:09.655Z - GET /uploads/1768275396431-Image_22.png from 127.0.0.1
+[req] 2026-01-13T03:55:13.194Z - PUT /api/products/14 from 127.0.0.1
+Deleted upload file: /Users/sumitshah/Downloads/ecommerce 3/backend/uploads/MatrixSafe Charger.png
+[req] 2026-01-13T03:55:13.238Z - GET /api/products/by-id/14 from 127.0.0.1
+[req] 2026-01-13T03:55:13.264Z - GET /uploads/1768275396431-Image_22.png from 127.0.0.1
+[req] 2026-01-13T03:55:16.283Z - PUT /api/products/14 from 127.0.0.1
+Deleted upload file: /Users/sumitshah/Downloads/ecommerce 3/backend/uploads/1768275396431-Image_22.png
+[req] 2026-01-13T03:55:16.309Z - GET /api/products/by-id/14 from 127.0.0.1
+[req] 2026-01-13T03:55:18.490Z - PUT /api/products/14 from 127.0.0.1
+Deleted upload file: /Users/sumitshah/Downloads/ecommerce 3/backend/uploads/Ipad Air M2 mini.png
+[req] 2026-01-13T03:55:18.514Z - GET /api/products/by-id/14 from 127.0.0.1
+[req] 2026-01-13T03:55:24.169Z - PUT /api/products/14 from 127.0.0.1
+[req] 2026-01-13T03:55:26.447Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:55:26.449Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:26.452Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:55:26.605Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:55:29.774Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:29.776Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:55:29.778Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:29.939Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:55:33.633Z - GET /api/products/ipad-air-m2 from 127.0.0.1
+[req] 2026-01-13T03:55:36.003Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:55:36.006Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:36.007Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:36.009Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:55:36.038Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:55:38.951Z - GET /api/products/earbuds from 127.0.0.1
+[req] 2026-01-13T03:55:41.136Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:55:41.137Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:41.139Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:55:41.141Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:41.170Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:55:48.762Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:48.769Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:55:48.770Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:55:48.774Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:55:48.779Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:55:48.780Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:55:48.880Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:55:54.651Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:55:56.371Z - GET /api/products/by-id/16 from 127.0.0.1
+[req] 2026-01-13T03:55:56.382Z - GET /api/uploads/list from 127.0.0.1
+[req] 2026-01-13T03:55:56.383Z - GET /api/uploads/list from 127.0.0.1
+[req] 2026-01-13T03:56:29.439Z - PUT /api/products/16 from 127.0.0.1
+[req] 2026-01-13T03:56:31.227Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:31.227Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:56:31.230Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:56:31.233Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:31.235Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:56:31.238Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:56:31.345Z - GET /uploads/1768276589461-Earbuds.png from 127.0.0.1
+[req] 2026-01-13T03:56:31.346Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:56:34.105Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:34.106Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:56:34.107Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:56:34.109Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:34.129Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:56:40.218Z - GET /api/products/smart-box from 127.0.0.1
+[req] 2026-01-13T03:56:41.820Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:56:41.821Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:41.823Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:56:41.823Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:41.845Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:56:44.036Z - GET /api/products/entertainment-games-pack from 127.0.0.1
+[req] 2026-01-13T03:56:44.053Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:56:46.409Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:46.410Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:56:46.412Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T03:56:46.413Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:46.466Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:56:48.240Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:48.241Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:56:48.243Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:56:48.244Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:56:48.249Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:56:48.251Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:56:48.347Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:56:48.348Z - GET /uploads/1768276589461-Earbuds.png from 127.0.0.1
+[req] 2026-01-13T03:57:00.891Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:57:00.892Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:57:13.363Z - PATCH /api/orders/1 from 127.0.0.1
+[req] 2026-01-13T03:57:13.403Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:57:22.026Z - PATCH /api/orders/4 from 127.0.0.1
+[req] 2026-01-13T03:57:22.050Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:57:34.520Z - PATCH /api/orders/4 from 127.0.0.1
+[req] 2026-01-13T03:57:34.552Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:57:47.785Z - PATCH /api/orders/8 from 127.0.0.1
+[req] 2026-01-13T03:57:47.807Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:58:00.643Z - PATCH /api/orders/2 from 127.0.0.1
+[req] 2026-01-13T03:58:00.676Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:58:14.301Z - PATCH /api/orders/7 from 127.0.0.1
+[req] 2026-01-13T03:58:14.329Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:58:42.065Z - PATCH /api/orders/5 from 127.0.0.1
+[req] 2026-01-13T03:58:42.112Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:58:51.517Z - PATCH /api/orders/6 from 127.0.0.1
+[req] 2026-01-13T03:58:51.535Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:08.097Z - PATCH /api/orders/9 from 127.0.0.1
+[req] 2026-01-13T03:59:08.131Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:19.783Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:19.784Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:59:19.785Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:59:19.786Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:59:19.787Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:59:19.941Z - GET /uploads/1768276589461-Earbuds.png from 127.0.0.1
+[req] 2026-01-13T03:59:19.941Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:59:27.417Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:27.419Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:31.724Z - PATCH /api/orders/6 from 127.0.0.1
+[req] 2026-01-13T03:59:31.741Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:38.706Z - PATCH /api/orders/6 from 127.0.0.1
+[req] 2026-01-13T03:59:38.724Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:42.786Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:59:42.789Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:59:42.790Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:42.791Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:59:42.791Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:59:42.793Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:42.880Z - GET /uploads/1768276589461-Earbuds.png from 127.0.0.1
+[req] 2026-01-13T03:59:42.880Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T03:59:45.401Z - GET /api/orders/my from 127.0.0.1
+[req] 2026-01-13T03:59:46.767Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:59:46.768Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:59:46.769Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:46.769Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T03:59:46.772Z - GET /api/analytics from 127.0.0.1
+[req] 2026-01-13T03:59:46.777Z - GET /api/orders from 127.0.0.1
+[req] 2026-01-13T03:59:46.845Z - GET /uploads/1768276589461-Earbuds.png from 127.0.0.1
+[req] 2026-01-13T03:59:46.845Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T04:00:11.996Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T04:00:12.000Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T04:00:12.001Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T04:00:12.001Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T04:00:12.047Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1
+[req] 2026-01-13T04:00:13.949Z - GET /api/products/ipad-air-m2 from 127.0.0.1
+[req] 2026-01-13T04:00:13.950Z - GET /api/products/ipad-air-m2 from 127.0.0.1
+[req] 2026-01-13T04:00:17.074Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T04:00:17.075Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T04:00:17.075Z - GET /api/products?featured=true from 127.0.0.1
+[req] 2026-01-13T04:00:17.077Z - GET /api/products from 127.0.0.1
+[req] 2026-01-13T04:00:17.101Z - GET /uploads/ENTERTAINMENT%20%26%20GAMES.png from 127.0.0.1

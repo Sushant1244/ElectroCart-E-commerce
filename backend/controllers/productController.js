@@ -1,4 +1,6 @@
 const adapter = require('../models/adapter');
+const fs = require('fs');
+const path = require('path');
 const { listProducts: listInMemoryProducts, findBySlug: findInMemoryBySlug, findById: findInMemoryById } = require('../utils/inMemoryProducts');
 const slugify = require('slugify');
 
@@ -65,44 +67,105 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const id = req.params.id;
-    const update = {...req.body};
-    
-    // Handle price and stock as numbers
+    const update = { ...req.body };
+
+    // parse numeric fields
     if (update.price) update.price = Number(update.price);
     if (update.originalPrice) update.originalPrice = Number(update.originalPrice);
     if (update.stock) update.stock = Number(update.stock);
     if (update.rating) update.rating = Number(update.rating);
     if (update.featured !== undefined) update.featured = update.featured === 'true' || update.featured === true;
-    
-    // If new files are uploaded, convert to upload paths and append
+
+    const existingProduct = await adapter.Product.findById(id);
+    const replaceFlag = req.body && (req.body.replaceImages === 'true' || req.body.replaceImages === true || req.body.replaceImages === '1');
+
+    // helper: parse incoming array/string -> array
+    const parseArray = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) return parsed; return [val]; } catch (e) { return val.split(',').map(s => s.trim()).filter(Boolean); }
+      }
+      return [];
+    };
+
+    let baseImages = existingProduct && Array.isArray(existingProduct.images) ? existingProduct.images.slice() : [];
+
+    // handle deleteImages: remove from baseImages and delete files
+    const delImages = parseArray(req.body && req.body.deleteImages);
+    if (delImages.length) {
+      const toFilename = (img) => img ? (img.startsWith('/uploads/') ? img.replace('/uploads/', '') : img) : '';
+      const delFilenames = delImages.map(toFilename);
+      for (const img of delImages) {
+        try {
+          // remove matching filenames from baseImages
+          baseImages = baseImages.filter(i => {
+            const f = toFilename(i);
+            return !delFilenames.includes(f);
+          });
+          const filename = toFilename(img);
+          const filePath = path.join(__dirname, '..', 'uploads', filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.debug('Deleted upload file:', filePath);
+          }
+        } catch (err) {
+          console.warn('Failed to remove old upload file during deleteImages', err && err.message ? err.message : err);
+        }
+      }
+      // ensure DB is updated if deletions happened and no other image changes
+      if (!req.files?.length && !req.body.images) {
+        update.images = baseImages;
+        if (update.stock !== undefined && update.countInStock === undefined) {
+          update.countInStock = Number(update.stock);
+          delete update.stock;
+        }
+        const product = await adapter.Product.findByIdAndUpdate(id, update);
+        return res.json(product);
+      }
+    }
+
+    // handle new uploaded files
     if (req.files?.length) {
       const newImages = req.files.map(f => `/uploads/${f.filename}`);
-  const existingProduct = await adapter.Product.findById(id);
-      if (existingProduct && existingProduct.images) {
-        update.images = [...existingProduct.images, ...newImages];
-      } else {
+      if (replaceFlag) {
+        // remove any remaining baseImages files
+        for (const img of baseImages) {
+          try {
+            if (!img) continue;
+            const filename = img.startsWith('/uploads/') ? img.replace('/uploads/', '') : img;
+            const filePath = path.join(__dirname, '..', 'uploads', filename);
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          } catch (err) { console.warn('Failed to remove old upload file', err && err.message ? err.message : err); }
+        }
         update.images = newImages;
+      } else {
+        update.images = [...baseImages, ...newImages];
       }
     } else if (req.body.images) {
-      // If images are provided in body (JSON), append or set
-      let bodyImages = [];
-      if (Array.isArray(req.body.images)) bodyImages = req.body.images;
-      else if (typeof req.body.images === 'string') {
-        try { bodyImages = JSON.parse(req.body.images); if (!Array.isArray(bodyImages)) bodyImages = [bodyImages]; }
-        catch (e) { bodyImages = req.body.images.split(',').map(s => s.trim()).filter(Boolean); }
+      const bodyImages = parseArray(req.body.images);
+      if (replaceFlag) {
+        for (const img of baseImages) {
+          try {
+            if (!img) continue;
+            const filename = img.startsWith('/uploads/') ? img.replace('/uploads/', '') : img;
+            const filePath = path.join(__dirname, '..', 'uploads', filename);
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          } catch (err) { console.warn('Failed to remove old upload file', err && err.message ? err.message : err); }
+        }
+        update.images = bodyImages;
+      } else {
+        update.images = [...baseImages, ...bodyImages];
       }
-  const existingProduct = await adapter.Product.findById(id);
-      if (existingProduct && existingProduct.images) update.images = [...existingProduct.images, ...bodyImages];
-      else update.images = bodyImages;
     }
-    
-  // If the frontend sent 'stock', map it to countInStock for DB
-  if (update.stock !== undefined && update.countInStock === undefined) {
-    update.countInStock = Number(update.stock);
-    delete update.stock;
-  }
 
-  const product = await adapter.Product.findByIdAndUpdate(id, update);
+    // If the frontend sent 'stock', map it to countInStock for DB
+    if (update.stock !== undefined && update.countInStock === undefined) {
+      update.countInStock = Number(update.stock);
+      delete update.stock;
+    }
+
+    const product = await adapter.Product.findByIdAndUpdate(id, update);
     res.json(product);
   } catch (e) {
     res.status(500).json({ message: e.message });
