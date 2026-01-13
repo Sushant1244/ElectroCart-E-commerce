@@ -22,16 +22,6 @@ ElectroCart is a full-stack  e‑commerce application built to showcase a compac
 - `backend/` — Express API, serves `/api` routes and static `/uploads`
 - `frontend/public/uploads` and `backend/uploads` — product images used by the app
 
-## 📸 Screenshots
-
-Below are a few screenshots and sample product images used by the demo. The files are stored under `frontend/public/uploads` — open them directly in the repo or visit the running frontend to view full-size.
-
-<p align="center">
-	<img alt="Homepage banner" src="frontend/public/uploads/Iphone%20banner.png" width="680" style="margin:8px; border-radius:8px;" />
-	<img alt="Product - Wireless Headphones" src="frontend/public/uploads/Wireless%20Headphones.png" width="300" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
-	<img alt="Product - Homepad mini" src="frontend/public/uploads/Homepad%20mini.png" width="300" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
-</p>
-
 ---
 
 ## ⚡ Quick start (developer)
@@ -338,6 +328,17 @@ If you'd like, I can also:
 - Add a Docker Compose file to run the frontend, backend, and Postgres together,
 - Add a one-liner `make` or npm script that bootstraps the dev environment (install + start),
 - Add screenshots or a short demo GIF to this README.
+
+## 📸 Screenshots (backend uploads)
+
+Here are a few additional screenshots stored under `backend/uploads` used by the demo.
+
+<p align="center">
+	<img alt="Last product" src="backend/uploads/Last%20productt.png" width="360" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
+	<img alt="Latest product" src="backend/uploads/Latest%20product.png" width="360" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
+	<img alt="Mid screen" src="backend/uploads/mid%20screen.png" width="360" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
+	<img alt="Homepages" src="backend/uploads/Homepages.png" width="360" style="margin:8px; border-radius:8px; background:#fff; padding:8px;" />
+</p>
 
 Tell me which enhancement you'd like next and I'll add it.
 ### Authentication
