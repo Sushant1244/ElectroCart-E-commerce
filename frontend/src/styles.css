@@ -403,6 +403,37 @@ body, #root, .app {
   cursor: pointer;
 }
 
+/* Product detail layout */
+.product-detail {
+  display: grid;
+  grid-template-columns: 84px 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+.thumb-column { display:flex; flex-direction:column; gap:12px; }
+.thumb-vert { width:72px; height:72px; border-radius:8px; overflow:hidden; padding:0; border: none; background:transparent; cursor:pointer; box-shadow:none; }
+.thumb-vert img { width:100%; height:100%; object-fit:cover; display:block; }
+.thumb-vert.active { outline: 2px solid #2563eb; }
+.play-overlay { position:absolute; left:8px; top:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); color:white; border-radius:50%; font-weight:700; }
+
+.main-column .main-image-wrap { position:relative; min-height:560px; display:flex; align-items:center; justify-content:center; padding:18px; }
+.main-product-image, .main-product-media { width:100%; height:100%; object-fit:contain; display:block; }
+.fav-btn { position:absolute; right:18px; top:18px; background:rgba(255,255,255,0.9); border-radius:999px; border:none; width:44px; height:44px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(16,24,40,0.06); cursor:pointer; }
+
+.info-column { padding-top:8px; }
+.action-buttons { display:flex; gap:12px; margin-top:20px; }
+.btn.add-cart { background: #f59e0b; color: #fff; border:none; padding:14px 28px; font-weight:700; border-radius:8px; flex:1; }
+.btn.buy-now { background: #fb6a31; color:#fff; border:none; padding:14px 28px; font-weight:700; border-radius:8px; flex:1; }
+
+@media (max-width: 900px) {
+  .product-detail { grid-template-columns: 1fr; }
+  .thumb-column { order: 2; flex-direction:row; overflow:auto; }
+  .main-column { order: 1; }
+  .info-column { order: 3; }
+  .main-column .main-image-wrap { min-height: 320px; }
+}
+
 .btn-shop-now:hover {
   background: #ea580c;
   transform: translateY(-2px);
@@ -2117,6 +2148,11 @@ textarea {
   .product-page {
     flex-direction: column;
   }
+
+/* Rating row (compact) */
+.product-rating-row { display:flex; align-items:center; gap:10px; margin-top:6px; margin-bottom:8px; }
+.product-rating-stars .star { font-size: 1.05rem; color:#f59e0b; margin-right:4px; }
+.rating-link { color:#2563eb; text-decoration:none; font-weight:600; font-size:0.95rem; }
 
   .cart-item {
     flex-direction: column;

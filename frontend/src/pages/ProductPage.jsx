@@ -195,7 +195,7 @@ export default function ProductPage() {
 
       <div className="info">
         {product.featured && <span className="featured-badge">⭐ Featured Product</span>}
-        <h2>{product.name}</h2>
+  <h2>{product.name}</h2>
         <p className="category-badge">Category: {product.category || 'Uncategorized'}</p>
         <p className="description">{product.description || 'No description available.'}</p>
         <div className="price-stock">
