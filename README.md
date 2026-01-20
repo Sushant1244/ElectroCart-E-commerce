@@ -72,8 +72,10 @@ curl -i http://localhost:5001/api/products
 ## 🤝 Contributing
 - Fork, branch, and send a pull request. Keep changes focused and include build/test notes.
 
-## 📝 License
-- MIT
+## License
+This project is licensed under a Coventry University Academic Assignment License.
+It permits academic review and evaluation while restricting commercial use and
+academic misconduct.
 
 ## 📬 Contact
 - For quick help, open an issue in the repo with a short description and reproduction steps.
