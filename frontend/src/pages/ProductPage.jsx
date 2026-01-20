@@ -154,6 +154,8 @@ export default function ProductPage() {
     alert('Added to cart');
   };
 
+  // (Buy Now removed from product detail page - keep Add to Cart here)
+
   return (
     <div className="product-page">
       <div className="images">
@@ -211,9 +213,19 @@ export default function ProductPage() {
             {product.stock > 0 ? `In Stock (${product.stock} available)` : 'Out of Stock'}
           </p>
         </div>
-        <button onClick={addToCart} disabled={product.stock === 0} className={product.stock === 0 ? 'btn-disabled' : ''}>
-          {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-        </button>
+        {/* Rating */}
+        <div style={{marginTop: '12px', marginBottom: '8px'}} className="product-rating">
+          {[...Array(5)].map((_, i) => (
+            <span key={i} className={`star ${i < Math.round(product.rating || 0) ? 'filled' : ''}`} style={{marginRight:4}}>★</span>
+          ))}
+          <span style={{marginLeft:8, color:'#64748b'}}>{(product.rating || 0).toFixed ? (product.rating || 0).toFixed(1) : product.rating} {product.numReviews ? `(${product.numReviews} reviews)` : ''}</span>
+        </div>
+
+        <div>
+          <button onClick={addToCart} disabled={product.stock === 0} className={product.stock === 0 ? 'btn-disabled' : ''}>
+            {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+          </button>
+        </div>
       </div>
     </div>
   );
