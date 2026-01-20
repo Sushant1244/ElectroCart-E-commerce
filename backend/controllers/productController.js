@@ -219,3 +219,51 @@ exports.getProductBySlug = async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 };
+
+// Add a user review/rating to a product.
+// Expects authMiddleware to set req.user and body to contain { rating: number, comment?: string }
+exports.addReview = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: 'Not authenticated' });
+    const { rating, comment } = req.body;
+    const r = Number(rating);
+    if (!r || r < 1 || r > 5) return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+
+    // Load product
+    const product = await adapter.Product.findById(id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    // Prevent duplicate rating by same user: if product.reviews exists and contains userId, reject.
+    // adapter does not currently expose a reviews table; so we use a lightweight in-memory attach on product
+    // when DB doesn't support reviews. If DB model supports reviews, a proper join should be used instead.
+    const existingReviews = product.reviews || [];
+    if (existingReviews.find(rw => rw.userId && rw.userId === user._id)) {
+      return res.status(400).json({ message: 'You have already reviewed this product' });
+    }
+
+    // Compute new numeric aggregates
+    const prevNum = Number(product.numReviews || 0);
+    const prevRating = Number(product.rating || 0);
+    const newNum = prevNum + 1;
+    const newRating = ((prevRating * prevNum) + r) / newNum;
+
+    // Try to persist reviews if DB supports a reviews column (JSONB) or a related table.
+    const updatedData = { rating: newRating, numReviews: newNum };
+
+    // If adapter product instance supports an array column called 'reviews' we can append to it.
+    // Otherwise we'll keep reviews in-memory only (not persisted) but numeric aggregates are persisted.
+    try {
+      const updated = await adapter.Product.findByIdAndUpdate(id, updatedData);
+      // best-effort: attach review in response (not necessarily persisted)
+      const reviewObj = { userId: user._id, rating: r, comment: comment || '', date: new Date().toISOString(), userName: user.name || user.email || null };
+      updated.reviews = Array.isArray(product.reviews) ? [...product.reviews, reviewObj] : [reviewObj];
+      return res.json(updated);
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed to update product rating' });
+    }
+  } catch (e) {
+    return res.status(500).json({ message: e && e.message ? e.message : 'Server error' });
+  }
+};

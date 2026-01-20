@@ -154,6 +154,18 @@ export default function ProductPage() {
     alert('Added to cart');
   };
 
+  const buyNow = () => {
+    if (product.stock === 0) { alert('This product is out of stock'); return; }
+    try {
+      const imgObj = mainImageObj || imageUrls[0] || null;
+      const productId = product._id || product.id || product.slug;
+      const item = { product: productId, name: product.name, price: product.price || 0, quantity: 1, slug: product.slug, image: (imgObj && (imgObj.remote || imgObj.local)) || null };
+      localStorage.setItem('cart', JSON.stringify([item]));
+      try { window.dispatchEvent(new CustomEvent('cartUpdated')); } catch (e) {}
+      navigate('/checkout');
+    } catch (err) { console.error('BuyNow failed', err); alert('Failed to proceed to checkout'); }
+  };
+
   // (Buy Now removed from product detail page - keep Add to Cart here)
 
   return (
@@ -195,7 +207,7 @@ export default function ProductPage() {
         )}
       </div>
 
-      <div className="info">
+  <div className="info">
         {product.featured && <span className="featured-badge">⭐ Featured Product</span>}
   <h2>{product.name}</h2>
         <p className="category-badge">Category: {product.category || 'Uncategorized'}</p>
@@ -213,18 +225,55 @@ export default function ProductPage() {
             {product.stock > 0 ? `In Stock (${product.stock} available)` : 'Out of Stock'}
           </p>
         </div>
-        {/* Rating */}
-        <div style={{marginTop: '12px', marginBottom: '8px'}} className="product-rating">
-          {[...Array(5)].map((_, i) => (
-            <span key={i} className={`star ${i < Math.round(product.rating || 0) ? 'filled' : ''}`} style={{marginRight:4}}>★</span>
-          ))}
-          <span style={{marginLeft:8, color:'#64748b'}}>{(product.rating || 0).toFixed ? (product.rating || 0).toFixed(1) : product.rating} {product.numReviews ? `(${product.numReviews} reviews)` : ''}</span>
-        </div>
+        {/* Rating moved to the side column for layout */}
 
-        <div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <button onClick={addToCart} disabled={product.stock === 0} className={product.stock === 0 ? 'btn-disabled' : ''}>
             {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
           </button>
+          <button onClick={buyNow} disabled={product.stock === 0} className="btn-buy-now" style={{marginLeft: '8px'}}>
+            Buy Now
+          </button>
+        </div>
+      </div>
+
+      {/* Right-side area for rating (dotted/boxed area) */}
+      <div className="product-side">
+        <div className="rating-box">
+          <div className="product-rating" style={{textAlign:'center'}}>
+            {[...Array(5)].map((_, i) => {
+              const isFilled = i < Math.round(product.rating || 0);
+              return (
+                <span
+                  key={i}
+                  className={`star ${isFilled ? 'filled' : ''}`}
+                  style={{marginRight:6, cursor: 'pointer', fontSize: '1.4rem'}}
+                  title={`Give ${i+1} star${i+1>1?'s':''}`}
+                  onClick={async () => {
+                    try {
+                      const payload = { rating: i+1 };
+                      const res = await API.post(`/products/${product._id || product.id}/reviews`, payload);
+                      if (res && res.data) setProduct(res.data);
+                      else {
+                        const prevNum = Number(product.numReviews || 0);
+                        const prevRating = Number(product.rating || 0);
+                        const newNum = prevNum + 1;
+                        const newRating = ((prevRating * prevNum) + (i+1)) / newNum;
+                        setProduct({ ...product, rating: newRating, numReviews: newNum });
+                      }
+                      try { window.dispatchEvent(new CustomEvent('productRated')); } catch (e) {}
+                    } catch (err) {
+                      const status = err?.response?.status;
+                      if (status === 401) { navigate('/login'); return; }
+                      console.error('Failed to submit rating', err);
+                      alert('Failed to submit rating');
+                    }
+                  }}
+                >★</span>
+              );
+            })}
+            <div style={{marginTop:8, color:'#64748b', fontSize:'0.95rem'}}>{(product.rating || 0).toFixed ? (product.rating || 0).toFixed(1) : product.rating}{product.numReviews ? ` (${product.numReviews})` : ''}</div>
+          </div>
         </div>
       </div>
     </div>

@@ -103,52 +103,7 @@ export default function ProductCard({ p }) {
     }
   };
 
-  const buyNow = (e) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    // Require user to be logged in to buy
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || 'null');
-      if (!user) {
-        if (confirm('You must be logged in to buy now. Go to login page now?')) {
-          const returnUrl = encodeURIComponent(window.location.pathname + (p && p.slug ? `?product=${p.slug}` : ''));
-          navigate(`/login?next=${returnUrl}`);
-        }
-        return;
-      }
-    } catch (err) {
-      if (confirm('You must be logged in to buy now. Go to login page now?')) {
-        const returnUrl = encodeURIComponent(window.location.pathname + (p && p.slug ? `?product=${p.slug}` : ''));
-        navigate(`/login?next=${returnUrl}`);
-      }
-      return;
-    }
-    if (p.stock === 0) { alert('This product is out of stock'); return; }
-    try {
-      let imageToStore = null;
-      try {
-        const candidate = (Array.isArray(p.images) ? p.images[0] : p.images) || UPLOAD_FALLBACK[(p.slug || '').toLowerCase()] || '';
-        const { local, remote } = resolveImageSrc(candidate);
-        imageToStore = remote || local || img || null;
-      } catch (_err) { imageToStore = img || null; }
-      const productId = p._id || p.id || p.productId || p.slug;
-      const item = {
-        product: productId,
-        name: p.name,
-        price: p.price || 0,
-        quantity: 1,
-        slug: p.slug,
-        image: imageToStore
-      };
-      // Replace cart with single-item purchase
-      localStorage.setItem('cart', JSON.stringify([item]));
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')); } catch (_e) { }
-      navigate('/checkout');
-    } catch (err) {
-      console.error('Buy now failed', err);
-      alert('Failed to proceed to checkout');
-    }
-  };
+  // Buy Now removed from product card per request
   
   return (
   <div className="product-card" onClick={(e) => {
@@ -215,9 +170,7 @@ export default function ProductCard({ p }) {
         <button className="btn-add-cart" onClick={addToCart} disabled={p.stock === 0}>
           {p.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
         </button>
-        <button className="btn-buy-now" onClick={buyNow} disabled={p.stock === 0} style={{marginLeft: '8px'}}>
-          Buy Now
-        </button>
+  {/* Buy Now removed from product card */}
       </div>
     </div>
   );
