@@ -1,30 +1,31 @@
-STUDENT / ACADEMIC PROJECT LICENSE
+COVENTRY UNIVERSITY ACADEMIC ASSIGNMENT LICENSE
 
-Copyright (c) 2026
-Sumit Shah
+Copyright (c) 2026 Sumit Shah
 All rights reserved.
 
-This project is developed as part of an academic / educational activity.
+This project has been developed and submitted as part of an academic assessment
+at Coventry University.
 
-Permission is granted to view, copy, and modify this software and its
-documentation solely for:
+Permission is granted to Coventry University staff, assessors, and students to:
 
-- Educational purposes
-- Academic coursework
-- Personal learning
-- Non-commercial research
+- View, review, and assess the source code
+- Run the software for academic evaluation purposes
+- Modify the code strictly for learning, teaching, or academic understanding
 
-The following restrictions apply:
+The following conditions apply:
 
-1. Commercial use of this software is strictly prohibited.
-2. This software may not be sold, licensed, or used in any paid product,
-   service, or commercial application.
-3. Any use of this software or its substantial portions must give proper
-   credit to the original author(s).
-4. Redistributions or modifications must retain this license notice.
+1. This work must NOT be copied, reused, or submitted in whole or in part as
+   another individual’s or group’s original academic submission.
+2. Commercial use, resale, sublicensing, or monetization of this software is
+   strictly prohibited.
+3. Any reference to, reuse of, or modification of this work must clearly
+   acknowledge the original author(s).
+4. Redistribution must retain this license notice in full.
+
+This license is intended to align with Coventry University regulations on
+academic integrity and assessment conduct.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR(S) BE
-LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THIS
-SOFTWARE.
+INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+OR NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THIS SOFTWARE.
