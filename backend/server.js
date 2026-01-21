@@ -9,6 +9,7 @@ const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
 const analyticsRoutes = require('./routes/analytics');
 const uploadsRoutes = require('./routes/uploads');
+const paymentsRoutes = require('./routes/payments');
 const pgConfig = require('./config/sequelize');
 let pgProductsRouter = null;
 // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
@@ -22,6 +23,25 @@ if (pgConfig && pgConfig.sequelize) {
       if (process.env.PG_SYNC === 'true') {
         await sequelize.sync({ alter: true });
         console.log('Postgres schema synchronized (alter)');
+      } else {
+        console.log('Postgres schema not synchronized automatically. To auto-create tables in dev set PG_SYNC=true and restart the server.');
+      }
+      // Convenience: if running locally (not production), ensure the `reviews` table exists
+      // This helps devs who have Postgres configured but haven't run migrations yet.
+      try {
+        if (process.env.NODE_ENV !== 'production' && pgConfig && pgConfig.Review) {
+          const qi = sequelize.getQueryInterface();
+          const tables = await qi.showAllTables();
+          // showAllTables can return array of objects or strings depending on dialect/config
+          const tableNames = (tables || []).map(t => (typeof t === 'string' ? t : (t.tableName || t.name))).map(n => String(n).toLowerCase());
+          if (!tableNames.includes('reviews')) {
+            console.log('`reviews` table missing — creating via Review.sync() (development only)');
+            await pgConfig.Review.sync({ alter: true });
+            console.log('`reviews` table created/updated');
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to auto-create `reviews` table (dev helper):', e && e.message ? e.message : e);
       }
     } catch (err) {
       console.error('Sequelize connection failed:', err.message || err);
@@ -92,6 +112,7 @@ app.use('/api/analytics', analyticsRoutes);
 
 // uploads listing
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 // If PG is enabled, mount PG product routes under /api/pg/products
 if (pgProductsRouter) {
