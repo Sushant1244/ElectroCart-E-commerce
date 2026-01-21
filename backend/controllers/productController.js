@@ -1,4 +1,5 @@
 const adapter = require('../models/adapter');
+const pgConfig = require('../config/sequelize');
 const fs = require('fs');
 const path = require('path');
 const { listProducts: listInMemoryProducts, findBySlug: findInMemoryBySlug, findById: findInMemoryById } = require('../utils/inMemoryProducts');
@@ -235,28 +236,50 @@ exports.addReview = async (req, res) => {
     const product = await adapter.Product.findById(id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    // Prevent duplicate rating by same user: if product.reviews exists and contains userId, reject.
-    // adapter does not currently expose a reviews table; so we use a lightweight in-memory attach on product
-    // when DB doesn't support reviews. If DB model supports reviews, a proper join should be used instead.
-    const existingReviews = product.reviews || [];
-    if (existingReviews.find(rw => rw.userId && rw.userId === user._id)) {
-      return res.status(400).json({ message: 'You have already reviewed this product' });
+    // If PG models are available, attempt to persist a Review row and update product aggregates transactionally.
+    // If the DB table is missing (relation does not exist) or any PG error occurs, log and fall back to adapter behavior.
+    if (pgConfig && pgConfig.sequelize && pgConfig.Review && pgConfig.Product) {
+      try {
+        const { sequelize, Review: PgReview, Product: PgProduct } = pgConfig;
+        // prevent duplicate by same user
+        const existing = await PgReview.findOne({ where: { userId: user._id, productId: product._id || product.id } });
+        if (existing) return res.status(400).json({ message: 'You have already reviewed this product' });
+
+        return await sequelize.transaction(async (t) => {
+          // create review
+          await PgReview.create({ userId: user._id, productId: product._id || product.id, rating: r, comment: comment || '' }, { transaction: t });
+          // recompute aggregates from DB
+          const agg = await PgReview.findAll({ where: { productId: product._id || product.id }, transaction: t });
+          const count = agg.length;
+          const sum = agg.reduce((s, it) => s + Number(it.rating || 0), 0);
+          const avg = count ? (sum / count) : 0;
+          // update product row
+          await PgProduct.update({ rating: avg, numReviews: count }, { where: { id: product._id || product.id }, transaction: t });
+          // return updated product via adapter
+          const updated = await adapter.Product.findById(product._id || product.id);
+          return res.json(updated);
+        });
+      } catch (err) {
+        // If the reviews table doesn't exist or another PG error occurred, log and continue to the fallback path
+        try {
+          console.warn('Postgres review operation failed, falling back to adapter. Error:', err && err.message ? err.message : err);
+          if (err && err.message && /relation \"?reviews\"? does not exist/i.test(err.message)) {
+            console.warn('Postgres table `reviews` is missing. To auto-create tables in development set PG_SYNC=true and restart the server.');
+          }
+        } catch (logErr) {
+          console.warn('Failed to log Postgres review error', logErr);
+        }
+        // fall through to non-PG fallback below
+      }
     }
 
-    // Compute new numeric aggregates
+    // Fallback: update numeric aggregates in adapter
     const prevNum = Number(product.numReviews || 0);
     const prevRating = Number(product.rating || 0);
     const newNum = prevNum + 1;
     const newRating = ((prevRating * prevNum) + r) / newNum;
-
-    // Try to persist reviews if DB supports a reviews column (JSONB) or a related table.
-    const updatedData = { rating: newRating, numReviews: newNum };
-
-    // If adapter product instance supports an array column called 'reviews' we can append to it.
-    // Otherwise we'll keep reviews in-memory only (not persisted) but numeric aggregates are persisted.
     try {
-      const updated = await adapter.Product.findByIdAndUpdate(id, updatedData);
-      // best-effort: attach review in response (not necessarily persisted)
+      const updated = await adapter.Product.findByIdAndUpdate(id, { rating: newRating, numReviews: newNum });
       const reviewObj = { userId: user._id, rating: r, comment: comment || '', date: new Date().toISOString(), userName: user.name || user.email || null };
       updated.reviews = Array.isArray(product.reviews) ? [...product.reviews, reviewObj] : [reviewObj];
       return res.json(updated);
@@ -266,4 +289,39 @@ exports.addReview = async (req, res) => {
   } catch (e) {
     return res.status(500).json({ message: e && e.message ? e.message : 'Server error' });
   }
+};
+
+// List reviews for a product (persisted if PG available, otherwise use product.images as placeholders)
+exports.listReviews = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (pgConfig && pgConfig.Review) {
+      try {
+        const { Review: PgReview, User: PgUser } = pgConfig;
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 8));
+        const offset = (page - 1) * limit;
+        const where = { productId: id };
+        const total = await PgReview.count({ where });
+        const rows = await PgReview.findAll({ where, order: [['createdAt', 'DESC']], limit, offset });
+        // attach lightweight user info when possible
+        const out = await Promise.all(rows.map(async r => {
+          const obj = r.toJSON();
+          try { const u = await PgUser.findByPk(obj.userId); if (u) { const uu = u.toJSON(); delete uu.passwordHash; obj.user = { _id: uu.id, name: uu.name || uu.email }; } } catch(e){}
+          return obj;
+        }));
+        return res.json({ reviews: out, total, page, limit });
+      } catch (err) {
+        try {
+          console.warn('Postgres listReviews failed, falling back to empty list or adapter. Error:', err && err.message ? err.message : err);
+          if (err && err.message && /relation \"?reviews\"? does not exist/i.test(err.message)) {
+            console.warn('Postgres table `reviews` is missing. To auto-create tables in development set PG_SYNC=true and restart the server.');
+          }
+        } catch (logErr) { console.warn('Failed to log Postgres listReviews error', logErr); }
+        return res.json([]);
+      }
+    }
+    // fallback: return empty or sample
+    return res.json([]);
+  } catch (e) { return res.status(500).json({ message: e.message }); }
 };
