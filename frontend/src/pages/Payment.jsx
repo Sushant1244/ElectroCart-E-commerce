@@ -31,6 +31,60 @@ export default function Payment() {
       const res = await API.post('/orders', payload);
       // If order was created, navigate to orders page and include id so user can track it
       const created = res?.data;
+      // If user chose Khalti, call backend initiate endpoint and redirect to Khalti payment page
+      if (method === 'khalti' && created && created._id) {
+        try {
+          const initPayload = {
+            return_url: `${window.location.origin}/orders?from=khalti&order=${created._id}`,
+            website_url: window.location.origin,
+            amount: Math.round(total),
+            purchase_order_id: created._id,
+            // customer info helps on provider side (optional)
+            customer_info: {
+              name: storedUser?.name || storedUser?.fullName || null,
+              email: storedUser?.email || null,
+              phone: storedUser?.phone || null
+            }
+          };
+          const initRes = await API.post('/payments/khati/initiate', initPayload);
+          const data = initRes?.data || {};
+          // Khalti responses vary; try common fields for a redirect URL
+          const paymentUrl = data.payment_url || data.data?.payment_url || data.data?.payment_url || data.data?.url || data.data?.checkout_url || data.data?.redirect_url;
+          const pidx = data.pidx || data.data?.pidx || null;
+          // Clear cart locally — order exists on server now
+          localStorage.removeItem('cart');
+          if (paymentUrl) {
+            // redirect user to Khalti hosted payment page
+            window.location.href = paymentUrl;
+            return; // stop further client-side navigation
+          }
+          // If no redirect URL but pidx present, inform user and navigate to Orders where they can see status
+          if (pidx) {
+            alert('Payment session started. You will be redirected to Khalti to complete the payment.');
+            navigate('/orders', { state: { justPlacedOrderId: created._id } });
+            return;
+          }
+          // fallback: navigate to orders page with created id
+          navigate('/orders', { state: { justPlacedOrderId: created._id } });
+          return;
+        } catch (e) {
+          console.error('Khalti initiate failed', e && (e.message || e));
+          // On failure to initiate payment, still navigate to orders but inform the user with server details if available
+          localStorage.removeItem('cart');
+          const serverData = e?.response?.data;
+          const serverMessage = serverData?.message || serverData || e?.message || 'Order created but failed to start Khalti payment.';
+          try {
+            const text = typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage);
+            alert(`Order created but failed to start Khalti payment: ${text}`);
+          } catch (jsonErr) {
+            alert('Order created but failed to start Khalti payment. Please check your orders page or contact support.');
+          }
+          if (created && created._id) navigate('/orders', { state: { justPlacedOrderId: created._id } }); else navigate('/');
+          return;
+        }
+      }
+
+      // Non-Khalti flows: clear cart and navigate to orders
       localStorage.removeItem('cart');
       if (created && created._id) {
         navigate('/orders', { state: { justPlacedOrderId: created._id } });
@@ -61,54 +115,54 @@ export default function Payment() {
       <h1>Checkout & Payment</h1>
       <div className="payment-grid">
         <main>
-          <section className="card" style={{padding:20, marginBottom:16}} aria-labelledby="pm-heading">
+          <section className="card p-16 mb-16" aria-labelledby="pm-heading">
             <h2 id="pm-heading">Payment Method</h2>
-            <div className="payment-methods" role="radiogroup" aria-label="Payment methods" style={{marginTop:12}}>
-              <label style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+            <div className="payment-methods mt-8" role="radiogroup" aria-label="Payment methods">
+              <label className="flex items-center mb-10" style={{gap:12}}>
                 <input aria-label="Cash on Delivery" type="radio" name="pm" value="cod" checked={method==='cod'} onChange={() => setMethod('cod')} />
                 <div>
                   <div style={{fontWeight:600}}>Cash on Delivery</div>
-                  <div style={{fontSize:13,color:'#666'}}>Pay when the order is delivered to your address.</div>
+                  <div className="small-muted">Pay when the order is delivered to your address.</div>
                 </div>
               </label>
 
-              <label style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+              <label className="flex items-center mb-10" style={{gap:12}}>
                 <input aria-label="eSewa" type="radio" name="pm" value="esewa" checked={method==='esewa'} onChange={() => setMethod('esewa')} />
                 <div>
                   <div style={{fontWeight:600}}>eSewa</div>
-                  <div style={{fontSize:13,color:'#666'}}>Quick online payment via eSewa wallet.</div>
+                  <div className="small-muted">Quick online payment via eSewa wallet.</div>
                 </div>
               </label>
 
-              <label style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+              <label className="flex items-center mb-10" style={{gap:12}}>
                 <input aria-label="Khalti" type="radio" name="pm" value="khalti" checked={method==='khalti'} onChange={() => setMethod('khalti')} />
                 <div>
                   <div style={{fontWeight:600}}>Khalti</div>
-                  <div style={{fontSize:13,color:'#666'}}>Secure payment using Khalti.</div>
+                  <div className="small-muted">Secure payment using Khalti.</div>
                 </div>
               </label>
 
-              <label style={{display:'flex',alignItems:'center',gap:12}}>
+              <label className="flex items-center" style={{gap:12}}>
                 <input aria-label="Bank Transfer" type="radio" name="pm" value="bank" checked={method==='bank'} onChange={() => setMethod('bank')} />
                 <div>
                   <div style={{fontWeight:600}}>Bank Transfer</div>
-                  <div style={{fontSize:13,color:'#666'}}>Manual bank transfer — upload proof after transfer.</div>
+                  <div className="small-muted">Manual bank transfer — upload proof after transfer.</div>
                 </div>
               </label>
             </div>
           </section>
 
           {method === 'bank' && (
-            <section className="card" style={{padding:16, marginBottom:16}}>
-              <h3 style={{marginTop:0}}>Bank transfer details</h3>
+            <section className="card p-16 mb-16">
+              <h3 className="mt-0">Bank transfer details</h3>
               <p style={{margin:0}}>Account: <strong>1234567890</strong></p>
               <p style={{margin:0}}>Bank: <strong>Example Bank</strong></p>
               <p style={{margin:0}}>IFSC: <strong>EXAMP0001</strong></p>
-              <p style={{marginTop:8,color:'#555'}}>Please make the transfer and use your order ID as reference. Upload transfer proof in your order details later.</p>
+              <p className="mt-8 small-muted">Please make the transfer and use your order ID as reference. Upload transfer proof in your order details later.</p>
             </section>
           )}
 
-          <div style={{display:'flex',gap:12}}>
+          <div className="flex" style={{gap:12}}>
             <button className="btn btn-primary" onClick={placeOrder} disabled={loading} aria-disabled={loading}>
               {loading ? 'Placing order…' : `Pay Rs ${total.toFixed(2)}`}
             </button>
@@ -117,19 +171,19 @@ export default function Payment() {
         </main>
 
         <aside>
-          <div className="card order-summary" style={{padding:16}}>
+          <div className="card order-summary p-16">
             <h3 style={{marginTop:0}}>Order Summary</h3>
             <div style={{marginTop:8}}>
               {cart.length === 0 ? <div>No items in cart</div> : (
                 <div>
                   {cart.map((c) => (
                     <div key={c._id || c.id || c.slug || c.name} className="item">
-                      <div style={{width:48,height:48,overflow:'hidden',borderRadius:6,background:'#f7f7f7',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                        <img src={c.image || ''} alt={c.name} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                      <div className="img-48">
+                        <img src={c.image || ''} alt={c.name} className="img-100pct" />
                       </div>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:600}}>{c.name}</div>
-                        <div style={{fontSize:13,color:'#666'}}>Qty: {c.quantity || 1}</div>
+                        <div className="small-muted">Qty: {c.quantity || 1}</div>
                       </div>
                       <div style={{fontWeight:600}}>Rs {(c.price || 0).toFixed(2)}</div>
                     </div>
