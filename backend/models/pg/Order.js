@@ -5,6 +5,8 @@ module.exports = (sequelize, DataTypes) => {
     orderItems: { type: DataTypes.JSONB, defaultValue: [] },
     shippingAddress: { type: DataTypes.JSONB },
     paymentResult: { type: DataTypes.JSONB },
+  // paymentSession stores provider session info like { provider: 'khalti', pidx: '...', initiatedAt: ... }
+  paymentSession: { type: DataTypes.JSONB },
     totalPrice: { type: DataTypes.FLOAT },
   status: { type: DataTypes.STRING, defaultValue: 'processing' },
   deliveryStatus: { type: DataTypes.STRING, defaultValue: 'pending' },
