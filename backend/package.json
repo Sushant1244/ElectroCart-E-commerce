@@ -7,7 +7,8 @@
   "start": "node server.js",
   "dev": "node --watch server.js",
   "dev:nodemon": "nodemon server.js",
-  "seed:pg": "node seed_pg.js"
+  "seed:pg": "node seed_pg.js",
+  "migrate:create-reviews": "node scripts/create_reviews_table.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
