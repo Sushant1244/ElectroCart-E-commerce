@@ -1,4 +1,6 @@
 const adapter = require('../models/adapter');
+const { sendMail } = require('../utils/mailer');
+const { orderPlacedHtml, orderStatusHtml } = require('../utils/emailTemplates');
 const fs = require('fs');
 const path = require('path');
 
@@ -52,8 +54,38 @@ exports.createOrder = async (req, res) => {
     }
     if (typeof userId === 'string' && /^\d+$/.test(userId)) userId = Number(userId);
 
-    // Determine paid status: COD remains unpaid until delivery (false), online methods marked paid for demo
-    const paid = paymentMethod && String(paymentMethod).toLowerCase() !== 'cod';
+    // Determine paid status. For COD allow creation immediately. For online methods we require
+    // that the payment was verified by the client/backend and `paymentResult.success === true`.
+    const isCod = paymentMethod && String(paymentMethod).toLowerCase() === 'cod';
+    const paymentResult = req.body.paymentResult || null;
+
+    if (!isCod) {
+      // If paymentResult isn't present or not successful, don't create the order
+      if (!paymentResult || paymentResult.success !== true) {
+        // If there's an explicit failed payment result, create a notification and email the user/admin
+        try {
+          const failedMsg = (paymentResult && paymentResult.message) ? String(paymentResult.message) : 'Payment failed or not verified';
+          // create a notification for the user (if user present in request or in payload)
+          const targetUserId = (req.user && (req.user._id || req.user.id)) || bodyUserId || null;
+          try {
+            await adapter.Notification.create({ userId: targetUserId, title: 'Payment failed', body: `Payment failed: ${failedMsg}`, meta: { paymentResult } });
+          } catch (e) { console.error('Failed to create payment-failed notification', e && e.message ? e.message : e); }
+          // send an email if we have an email address in paymentResult or req.user
+          const email = (paymentResult && paymentResult.email) || (req.user && req.user.email) || null;
+          if (email) {
+            try {
+              const { wrapHtml } = require('../utils/emailTemplates');
+              const html = wrapHtml('Payment failed', `<p>We could not process your payment. Reason: ${failedMsg}</p><p>If you were charged, contact support.</p>`);
+              const { sendMail } = require('../utils/mailer');
+              sendMail(email, 'Payment failed for your order', `Payment failed: ${failedMsg}`, html).catch(() => {});
+            } catch (e) { console.error('Failed to send payment-failed email', e && e.message ? e.message : e); }
+          }
+        } catch (e) {
+          console.error('Error handling failed payment notification', e && e.message ? e.message : e);
+        }
+        return res.status(400).json({ message: 'Payment not verified. Order not created' });
+      }
+    }
 
     const nowIso = new Date().toISOString();
     const orderData = {
@@ -62,15 +94,27 @@ exports.createOrder = async (req, res) => {
       shippingAddress: shippingAddress || null,
       totalPrice: total || 0,
       paymentMethod: paymentMethod || 'cod',
-      isPaid: !!paid,
+      // mark paid only if payment was verified (non-COD paths check above)
+      isPaid: isCod ? false : true,
       status: 'processing',
       deliveryStatus: 'pending',
-      paymentResult: paid ? { provider: paymentMethod, paidAt: nowIso } : null,
+      paymentResult: isCod ? null : (paymentResult || { provider: paymentMethod, paidAt: nowIso }),
       // use a consistent `timestamp` (ISO string) so frontend can render updates reliably
       deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed', timestamp: nowIso }]
     };
 
     const order = await adapter.Order.create(orderData);
+    // Send notification to user and email about order creation
+    try {
+      const notif = await adapter.Notification.create({ userId: userId || null, title: 'Order placed', body: `Your order ${order.id || order._id} has been placed successfully.`, meta: { orderId: order.id || order._id } });
+      // send email if user email available
+      if (order.email) {
+        try {
+          const html = orderPlacedHtml({ order, clientUrl: process.env.CLIENT_URL || '' });
+          sendMail(order.email, `Order ${order.id || order._id} confirmation`, `Your order ${order.id || order._id} has been placed.`, html).catch(() => {});
+        } catch (e) { console.error('Failed to generate/send orderPlaced email', e); }
+      }
+    } catch (e) { console.error('Notification/email after createOrder failed', e && e.message ? e.message : e); }
     if (req.user?.isAdmin) {
       auditAdminOrderAttempt({ user: { id: req.user._id ?? req.user.id, email: req.user.email }, action: 'created_order_on_behalf', createdOrderId: order && (order._id || order.id || null), payload: { userId, total: orderData.totalPrice } });
     }
@@ -134,7 +178,65 @@ exports.updateOrderStatus = async (req, res) => {
     updates.deliveryUpdates = existing;
 
     const updated = await adapter.Order.findByIdAndUpdate(id, updates);
+    // notify user about delivery/status update and email
+    try {
+      await adapter.Notification.create({ userId: updated.userId || null, title: `Order ${updated.id || updated._id} update`, body: `Order status updated: ${updated.status || updated.deliveryStatus}`, meta: { orderId: updated.id || updated._id } });
+      if (updated.email) {
+        try {
+          const html = orderStatusHtml({ order: updated, clientUrl: process.env.CLIENT_URL || '' });
+          sendMail(updated.email, `Update for order ${updated.id || updated._id}`, `Status: ${updated.status || updated.deliveryStatus}`, html).catch(() => {});
+        } catch (e) { console.error('Failed to generate/send orderStatus email', e); }
+      }
+    } catch (e) { console.error('Notification/email after updateOrderStatus failed', e && e.message ? e.message : e); }
     return res.json(updated);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+exports.cancelOrder = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const order = await adapter.Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // only allow owner or admin to cancel
+    const isOwner = req.user && (String(req.user._id || req.user.id) === String(order.userId));
+    if (!isOwner && !req.user?.isAdmin) return res.status(403).json({ message: 'Not authorized' });
+
+    // only allow cancel for certain statuses
+    const disallowed = ['delivered', 'completed', 'cancelled'];
+    if (disallowed.includes((order.status || '').toLowerCase())) return res.status(400).json({ message: 'Order cannot be cancelled' });
+
+    // Enforce 12-hour cancellation window for non-admins
+    try {
+      const createdAt = new Date(order.createdAt || order.date || order.created_at || null);
+      if (!req.user?.isAdmin && createdAt && !isNaN(createdAt)) {
+        const ageMs = Date.now() - createdAt.getTime();
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+        if (ageMs > TWELVE_HOURS) return res.status(400).json({ message: 'Cancellation window (12 hours) has passed' });
+      }
+    } catch (e) { /* ignore date parse errors and allow admin override */ }
+
+    const updates = { status: 'cancelled', deliveryStatus: 'cancelled' };
+    const existing = Array.isArray(order.deliveryUpdates) ? order.deliveryUpdates.slice() : [];
+    existing.push({ status: 'cancelled', location: 'User Request', note: `Order cancelled by ${req.user?.email || 'user'}`, timestamp: new Date() });
+    updates.deliveryUpdates = existing;
+
+    const updated = await adapter.Order.findByIdAndUpdate(id, updates);
+
+    // notify user and send email
+    try {
+      await adapter.Notification.create({ userId: updated.userId || null, title: `Order ${updated.id || updated._id} cancelled`, body: 'Your order has been cancelled.', meta: { orderId: updated.id || updated._id } });
+      if (updated.email) {
+        const { wrapHtml } = require('../utils/emailTemplates');
+        const { sendMail } = require('../utils/mailer');
+        const html = wrapHtml('Order cancelled', `<p>Your order <strong>${updated.id || updated._id}</strong> has been cancelled. If this was a mistake, contact support.</p>`);
+        sendMail(updated.email, `Order ${updated.id || updated._id} cancelled`, `Order cancelled`, html).catch(() => {});
+      }
+    } catch (e) { console.error('Failed to notify on cancel', e && e.message ? e.message : e); }
+
+    res.json(updated);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
