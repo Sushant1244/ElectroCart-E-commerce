@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import API from '../api/api';
 import { resolveImageSrc } from '../utils/resolveImage';
 
 export default function ProductCard({ p }) {
@@ -96,12 +97,21 @@ export default function ProductCard({ p }) {
       // dispatch storage event so header listeners update immediately in same tab
   // notify other UI parts in the same tab that the cart changed
   try { window.dispatchEvent(new CustomEvent('cartUpdated')); } catch (err) { /* fallback */ }
+      // send a notification to backend for this user (non-blocking)
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          // create a quick notification record for add-to-cart
+          API.post('/notifications', { title: 'Added to cart', body: `You added ${p.name} to your cart.`, userId: null }).catch(() => {});
+        }
+      } catch (e) {}
       alert('Added to cart');
     } catch (err) {
       console.error('Add to cart failed', err);
       alert('Failed to add to cart');
     }
   };
+
 
   // Buy Now removed from product card per request
   
@@ -167,9 +177,10 @@ export default function ProductCard({ p }) {
       </Link>
       {/* Add to cart button shown on card */}
       <div className="card-actions">
-        <button className="btn-add-cart" onClick={addToCart} disabled={p.stock === 0}>
+  <button className="btn-add-cart" onClick={addToCart} disabled={p.stock === 0}>
           {p.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
         </button>
+  {/* wishlist removed */}
   {/* Buy Now removed from product card */}
       </div>
     </div>

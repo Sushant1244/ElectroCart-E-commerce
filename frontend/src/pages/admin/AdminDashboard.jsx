@@ -360,6 +360,26 @@ export default function AdminDashboard() {
               )}
             </div>
 
+            <div className="card special-insight">
+              <h4>Special Insight</h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ flex: '0 0 120px' }}>
+                  <div style={{ fontSize: 28, fontWeight: 700 }}>{formatCurrency(totalRevenue)}</div>
+                  <div className="muted">Last 6 months revenue</div>
+                </div>
+                <div style={{ flex: 1, height: 120 }}>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={salesByMonth} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="month" hide />
+                      <YAxis hide />
+                      <Tooltip formatter={(v) => formatCurrency(v)} />
+                      <Line type="monotone" dataKey="total" stroke="#ff7a59" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
             <div className="card">
               <h4>Sales Trend</h4>
               <ResponsiveContainer width="100%" height={240}>

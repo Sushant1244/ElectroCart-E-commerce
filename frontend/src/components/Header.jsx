@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header({ user, onLogout }) {
   const navigate = useNavigate();
@@ -114,7 +115,7 @@ export default function Header({ user, onLogout }) {
                 />
                 {/* search button removed per request; Enter key in input still triggers search */}
               </div>
-              <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">❤</Link>
+              <NotificationDropdown />
               <Link to="/cart" className="icon-btn cart-icon" aria-label={`Cart with ${cartCount} items`}>🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
             </div>
         </div>

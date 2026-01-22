@@ -34,53 +34,86 @@ export default function Payment() {
       // If user chose Khalti, call backend initiate endpoint and redirect to Khalti payment page
       if (method === 'khalti' && created && created._id) {
         try {
-          // Khalti expects amount in paisa (or the provider's minor currency unit) — multiply by 100 for NPR
+          // Use Khalti client widget for smoother UX. Ensure public key exists in env
+          let publicKey = import.meta.env.VITE_KHALTI_PUBLIC_KEY || window.__KHALTI_PUBLIC_KEY__ || null;
+          // If publicKey not available at build time, fetch from backend config endpoint
+          if (!publicKey) {
+            try {
+              const cfg = await API.get('/payments/khati/config');
+              publicKey = cfg?.data?.publicKey || null;
+            } catch (e) {
+              console.warn('Failed to fetch khalti config from server', e);
+            }
+          }
+          if (!publicKey) throw new Error('Khalti public key not configured');
           const khaltiAmount = Math.round(total * 100);
-          const initPayload = {
-            return_url: `${window.location.origin}/orders?from=khalti&order=${created._id}`,
-            website_url: window.location.origin,
-            amount: khaltiAmount,
-            purchase_order_id: created._id,
-            // customer info helps on provider side (optional)
-            customer_info: {
-              name: storedUser?.name || storedUser?.fullName || null,
-              email: storedUser?.email || null,
-              phone: storedUser?.phone || null
+          // Load Khalti script dynamically if not present
+          if (!window.KhaltiCheckout) {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement('script');
+              s.src = 'https://khalti.com/static/khalti-checkout.js';
+              s.async = true;
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+          }
+          if (!window.KhaltiCheckout) throw new Error('Khalti widget failed to load');
+
+          const config = {
+            publicKey: publicKey,
+            productIdentity: created._id,
+            productName: 'ElectroCart Order',
+            productUrl: window.location.origin,
+            eventHandler: {
+              onSuccess: async (payload) => {
+                // payload.token, payload.amount
+                try {
+                  // First call server debug endpoint to surface raw Khalti response for troubleshooting
+                  try {
+                    const dbg = await API.post('/payments/khati/debug-verify', { token: payload.token, amount: payload.amount, purchase_order_id: created._id });
+                    console.debug('Khalti debug verify response', dbg && dbg.data);
+                    // If debug verify returned non-2xx, surface the body to the user for support
+                    if (!(dbg.status >= 200 && dbg.status < 300)) {
+                      alert('Payment verification failed (provider). Details logged to console. Contact support with order id: ' + (created._id || created.id));
+                      // still navigate so user can see order in pending state
+                      localStorage.removeItem('cart');
+                      navigate('/orders', { state: { justPlacedOrderId: created._id } });
+                      return;
+                    }
+                  } catch (dbgErr) {
+                    console.warn('Debug verify call failed', dbgErr);
+                  }
+
+                  // If debug shows OK, call official verify to mark order paid
+                  await API.post('/payments/khati/verify', { token: payload.token, amount: payload.amount, purchase_order_id: created._id });
+                  localStorage.removeItem('cart');
+                  navigate('/orders', { state: { justPlacedOrderId: created._id } });
+                } catch (err) {
+                  console.error('Khalti verify failed', err);
+                  alert('Payment verification failed. Please contact support. Order created and is pending.');
+                  navigate('/orders', { state: { justPlacedOrderId: created._id } });
+                }
+              },
+              onError: (err) => {
+                console.error('Khalti checkout error', err);
+                alert('Payment failed or cancelled.');
+                navigate('/orders', { state: { justPlacedOrderId: created._id } });
+              },
+              onClose: () => {
+                // user closed the widget
+              }
             }
           };
-          const initRes = await API.post('/payments/khati/initiate', initPayload);
-          const data = initRes?.data || {};
-          // Khalti responses vary; try common fields for a redirect URL
-          const paymentUrl = data.payment_url || data.data?.payment_url || data.data?.payment_url || data.data?.url || data.data?.checkout_url || data.data?.redirect_url;
-          const pidx = data.pidx || data.data?.pidx || null;
-          // Clear cart locally — order exists on server now
-          localStorage.removeItem('cart');
-          if (paymentUrl) {
-            // redirect user to Khalti hosted payment page
-            window.location.href = paymentUrl;
-            return; // stop further client-side navigation
-          }
-          // If no redirect URL but pidx present, inform user and navigate to Orders where they can see status
-          if (pidx) {
-            alert('Payment session started. You will be redirected to Khalti to complete the payment.');
-            navigate('/orders', { state: { justPlacedOrderId: created._id } });
-            return;
-          }
-          // fallback: navigate to orders page with created id
-          navigate('/orders', { state: { justPlacedOrderId: created._id } });
+
+          const checkout = new window.KhaltiCheckout(config);
+          checkout.show({ amount: khaltiAmount });
           return;
         } catch (e) {
-          console.error('Khalti initiate failed', e && (e.message || e));
-          // On failure to initiate payment, still navigate to orders but inform the user with server details if available
+          console.error('Khalti client flow failed', e && e.message ? e.message : e);
+          // Fallback: navigate to orders and inform user
           localStorage.removeItem('cart');
-          const serverData = e?.response?.data;
-          const serverMessage = serverData?.message || serverData || e?.message || 'Order created but failed to start Khalti payment.';
-          try {
-            const text = typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage);
-            alert(`Order created but failed to start Khalti payment: ${text}`);
-          } catch (jsonErr) {
-            alert('Order created but failed to start Khalti payment. Please check your orders page or contact support.');
-          }
+          alert('Order created but payment flow failed to start. Please check your orders.');
           if (created && created._id) navigate('/orders', { state: { justPlacedOrderId: created._id } }); else navigate('/');
           return;
         }

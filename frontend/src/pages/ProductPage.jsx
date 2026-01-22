@@ -262,6 +262,13 @@ export default function ProductPage() {
       const item = { product: productId, name: product.name, price: product.price || 0, quantity: 1, slug: product.slug, image: (imgObj && (imgObj.remote || imgObj.local)) || null };
       localStorage.setItem('cart', JSON.stringify([item]));
       try { window.dispatchEvent(new CustomEvent('cartUpdated')); } catch (e) {}
+      // send notification about purchase initiation (non-blocking)
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          API.post('/notifications', { title: 'Started checkout', body: `You started checkout for ${product.name}`, userId: null }).catch(() => {});
+        }
+      } catch (e) {}
       navigate('/checkout');
     } catch (err) { console.error('BuyNow failed', err); alert('Failed to proceed to checkout'); }
   };

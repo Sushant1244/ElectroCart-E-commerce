@@ -109,6 +109,27 @@ export default function Orders() {
               </div>
               <div style={{marginTop:12}}>
                 <button className="btn" onClick={() => loadTracking(o._id)}>Track delivery</button>
+                {/* Cancel order button: only show when order can be cancelled client-side */}
+                {['processing','pending'].includes((o.status||'').toLowerCase()) && (
+                  <button
+                    className="btn btn-danger"
+                    style={{marginLeft:8}}
+                    onClick={async () => {
+                      if (!confirm('Are you sure you want to cancel this order? This cannot be undone.')) return;
+                      try {
+                        const res = await API.patch(`/orders/${o._id}/cancel`);
+                        alert('Order cancelled successfully');
+                        // refresh orders and optionally open tracking for updated order
+                        await loadOrders();
+                      } catch (err) {
+                        console.error('Cancel failed', err);
+                        alert(err?.response?.data?.message || 'Failed to cancel order');
+                      }
+                    }}
+                  >
+                    Cancel order
+                  </button>
+                )}
               </div>
             </div>
           ))}

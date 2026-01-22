@@ -4,19 +4,20 @@
   "main": "server.js",
   "license": "MIT",
   "scripts": {
-  "start": "node server.js",
-  "dev": "node --watch server.js",
-  "dev:nodemon": "nodemon server.js",
-  "seed:pg": "node seed_pg.js",
-  "migrate:create-reviews": "node scripts/create_reviews_table.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "dev:nodemon": "nodemon server.js",
+    "seed:pg": "node seed_pg.js",
+    "migrate:create-reviews": "node scripts/create_reviews_table.js"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
-  "multer": "^1.4.4",
+    "multer": "^1.4.4",
     "nodemailer": "^7.0.11",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",

@@ -18,7 +18,9 @@ function auditAdminOrderAttempt(info) {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, total, paymentMethod, userId: bodyUserId } = req.body;
+  // support both `items` and legacy `orderItems` shapes from various clients
+  const { shippingAddress, total, paymentMethod, userId: bodyUserId } = req.body;
+  const items = req.body.items || req.body.orderItems || [];
 
     // Require authenticated user
     if (!req.user) return res.status(401).json({ message: 'Authentication required' });
@@ -54,51 +56,79 @@ exports.createOrder = async (req, res) => {
     }
     if (typeof userId === 'string' && /^\d+$/.test(userId)) userId = Number(userId);
 
-    // Determine paid status. For COD allow creation immediately. For online methods we require
-    // that the payment was verified by the client/backend and `paymentResult.success === true`.
+    // Determine paid status. For COD allow creation immediately. For online methods we prefer
+    // that the payment was verified, but allow creating a pending Khalti order (so client can
+    // initiate/verify payment after order creation) when no token/result is provided.
     const isCod = paymentMethod && String(paymentMethod).toLowerCase() === 'cod';
+    const isKhalti = paymentMethod && ['khalti','khati'].includes(String(paymentMethod).toLowerCase());
     const paymentResult = req.body.paymentResult || null;
 
-    if (!isCod) {
-      // If paymentResult isn't present or not successful, don't create the order
+    if (!isCod && !isKhalti) {
+      // For non-COD, non-Khalti methods require an explicit successful paymentResult
       if (!paymentResult || paymentResult.success !== true) {
-        // If there's an explicit failed payment result, create a notification and email the user/admin
+        // handle failed payment notification/email then reject
         try {
           const failedMsg = (paymentResult && paymentResult.message) ? String(paymentResult.message) : 'Payment failed or not verified';
-          // create a notification for the user (if user present in request or in payload)
           const targetUserId = (req.user && (req.user._id || req.user.id)) || bodyUserId || null;
-          try {
-            await adapter.Notification.create({ userId: targetUserId, title: 'Payment failed', body: `Payment failed: ${failedMsg}`, meta: { paymentResult } });
-          } catch (e) { console.error('Failed to create payment-failed notification', e && e.message ? e.message : e); }
-          // send an email if we have an email address in paymentResult or req.user
+          try { await adapter.Notification.create({ userId: targetUserId, title: 'Payment failed', body: `Payment failed: ${failedMsg}`, meta: { paymentResult } }); } catch (e) { console.error('Failed to create payment-failed notification', e && e.message ? e.message : e); }
           const email = (paymentResult && paymentResult.email) || (req.user && req.user.email) || null;
           if (email) {
             try {
               const { wrapHtml } = require('../utils/emailTemplates');
               const html = wrapHtml('Payment failed', `<p>We could not process your payment. Reason: ${failedMsg}</p><p>If you were charged, contact support.</p>`);
-              const { sendMail } = require('../utils/mailer');
               sendMail(email, 'Payment failed for your order', `Payment failed: ${failedMsg}`, html).catch(() => {});
             } catch (e) { console.error('Failed to send payment-failed email', e && e.message ? e.message : e); }
           }
-        } catch (e) {
-          console.error('Error handling failed payment notification', e && e.message ? e.message : e);
-        }
+        } catch (e) { console.error('Error handling failed payment notification', e && e.message ? e.message : e); }
         return res.status(400).json({ message: 'Payment not verified. Order not created' });
       }
     }
 
+    // If payment method is Khalti, allow order creation when no verification token/result is present
+    // but if the client provided a Khalti token and amount, attempt server-side verification now.
+    if (isKhalti) {
+      const khaltiToken = req.body.khaltiToken || (paymentResult && paymentResult.token) || null;
+      const khaltiAmount = req.body.khaltiAmount || (paymentResult && paymentResult.amount) || null;
+      if (khaltiToken && khaltiAmount) {
+        try {
+          // verify with Khalti API
+          const axios = require('axios');
+          const KHALTI_ENV = process.env.KHALTI_ENV === 'production' ? 'production' : 'dev';
+          const KHALTI_VERIFY_URL = KHALTI_ENV === 'production' ? 'https://khalti.com/api/v2/payment/verify/' : 'https://dev.khalti.com/api/v2/payment/verify/';
+          const KHALTI_SECRET = process.env.KHALTI_SECRET_KEY || process.env.KHALTI_LIVE_KEY || null;
+          if (!KHALTI_SECRET) throw new Error('Khalti secret not configured');
+          const resp = await axios.post(KHALTI_VERIFY_URL, { token: khaltiToken, amount: Number(khaltiAmount) }, { headers: { Authorization: `Key ${KHALTI_SECRET}` } });
+          // treat successful response as verified
+          if (resp && resp.data) {
+            // attach verification result as paymentResult for storage
+            req.body.paymentResult = resp.data;
+            // ensure `success` flag for downstream logic
+            req.body.paymentResult.success = true;
+          }
+        } catch (e) {
+          console.error('Khalti verification failed:', e && (e.response?.data || e.message || e));
+          // If verification fails, reject creation to avoid unverified paid orders
+          return res.status(400).json({ message: 'Khalti payment verification failed', detail: e && (e.response?.data || e.message) });
+        }
+      }
+      // if no token provided, proceed and create order as unpaid/pending; client will call /api/payments/khati/initiate or /verify later
+    }
+
     const nowIso = new Date().toISOString();
+    // consider payment verified only when paymentResult.success === true
+    const verified = paymentResult && paymentResult.success === true;
     const orderData = {
       userId,
       orderItems: items,
       shippingAddress: shippingAddress || null,
       totalPrice: total || 0,
       paymentMethod: paymentMethod || 'cod',
-      // mark paid only if payment was verified (non-COD paths check above)
-      isPaid: isCod ? false : true,
+      // mark paid only when explicitly verified; Khalti orders created without verification remain unpaid
+      isPaid: isCod ? false : !!verified,
       status: 'processing',
       deliveryStatus: 'pending',
-      paymentResult: isCod ? null : (paymentResult || { provider: paymentMethod, paidAt: nowIso }),
+      // don't store a synthetic paymentResult for Khalti when not verified
+      paymentResult: isCod ? null : (verified ? paymentResult : (isKhalti ? null : (paymentResult || { provider: paymentMethod, paidAt: nowIso }))),
       // use a consistent `timestamp` (ISO string) so frontend can render updates reliably
       deliveryUpdates: [{ status: 'pending', location: 'Order Received', note: 'Order has been received and is being processed', timestamp: nowIso }]
     };
