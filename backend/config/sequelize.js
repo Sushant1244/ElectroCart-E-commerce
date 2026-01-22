@@ -17,6 +17,7 @@ const Product = require('../models/pg/Product')(sequelize, DataTypes);
 const User = require('../models/pg/User')(sequelize, DataTypes);
 const Order = require('../models/pg/Order')(sequelize, DataTypes);
 const Review = require('../models/pg/Review')(sequelize, DataTypes);
+const Notification = require('../models/pg/Notification')(sequelize, DataTypes);
 
 // associations
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -27,4 +28,5 @@ Review.belongsTo(Product, { foreignKey: 'productId' });
 User.hasMany(Review, { foreignKey: 'userId' });
 Review.belongsTo(User, { foreignKey: 'userId' });
 
-module.exports = { sequelize, Product, User, Order, Review };
+module.exports = { sequelize, Product, User, Order, Review, Notification };
+
