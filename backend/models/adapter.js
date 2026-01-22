@@ -9,6 +9,7 @@ const adapter = {};
 
 if (pgConfig && pgConfig.Product) {
   const { Product: PgProduct, User: PgUser, Order: PgOrder } = pgConfig;
+  const NotificationModel = pgConfig.Notification;
 
   adapter.Product = {
     create: async (data) => {
@@ -190,6 +191,24 @@ if (pgConfig && pgConfig.Product) {
   obj.total = obj.totalPrice ?? obj.total ?? 0;
   obj.date = obj.createdAt || obj.date || null;
   return obj;
+    }
+  };
+
+  adapter.Notification = {
+    create: async (data) => {
+      if (!NotificationModel) return null;
+      const inst = await NotificationModel.create(data);
+      const obj = inst.toJSON(); obj._id = obj.id; return obj;
+    },
+    find: async (query = {}) => {
+      if (!NotificationModel) return [];
+      const rows = await NotificationModel.findAll({ where: query, order: [['createdAt', 'DESC']] });
+      return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; });
+    },
+    findByIdAndUpdate: async (id, update) => {
+      if (!NotificationModel) return null;
+      const inst = await NotificationModel.findByPk(id);
+      if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; return obj;
     }
   };
 
