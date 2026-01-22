@@ -138,6 +138,9 @@ body, #root, .app {
   font-size: 1.5rem;
 }
 
+.brand-link { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+.brand-logo { height: 42px; width: auto; display: block; }
+
 .brand-text {
   font-size: 1.5rem;
   font-weight: 700;
@@ -292,6 +295,23 @@ body, #root, .app {
 }
 .order-summary .item img { width:48px; height:48px; object-fit:cover; border-radius:6px; }
 .order-summary .totals { display:flex; justify-content:space-between; font-weight:700; padding-top:12px; }
+
+/* Utilities used by Payment.jsx to avoid inline physical properties */
+.p-16 { padding: 16px !important; }
+.mb-16 { margin-bottom: 16px !important; }
+.mt-0 { margin-top: 0 !important; }
+.mt-8 { margin-top: 8px !important; }
+.flex { display: flex !important; }
+.gap-12 { gap: 12px !important; }
+.center { align-items: center; justify-content: center; }
+.img-48 { inline-size: 48px; block-size: 48px; overflow: hidden; border-radius: 6px; background: #f7f7f7; display:flex; align-items:center; justify-content:center; }
+.img-100pct { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.small-muted { font-size: 13px; color: #666; }
+.items-center { align-items: center; }
+.mb-10 { margin-bottom: 10px !important; }
+.flex-1 { flex: 1; }
+.fw-600 { font-weight: 600; }
+.m-0 { margin: 0 !important; }
 
 /* Responsive adjustments */
 @media (max-width: 900px) {
@@ -556,6 +576,7 @@ body, #root, .app {
   margin-bottom: 0.5rem;
 }
 
+  text-align: center; /* Added text alignment for hero content */
 .promo-content p {
   font-size: 1.25rem;
   color: #64748b;
@@ -1392,6 +1413,86 @@ button, .btn-primary, .btn-secondary {
   max-width: 500px;
 }
 
+/* Make main image area scrollable when taller than viewport and allow thumbnails to scroll */
+.product-page .images {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 220px); /* keep some top/bottom space */
+  overflow: hidden;
+}
+
+.product-page .main-image-wrap {
+  flex: 1 1 auto;
+  overflow: auto; /* allows scrolling when image height exceeds container */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.product-page .main-image-wrap img {
+  max-width: 100%;
+  max-height: calc(100vh - 300px);
+  object-fit: contain;
+  display: block;
+}
+
+.product-page .thumbnails {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.product-page .thumbnails::-webkit-scrollbar { height: 8px; }
+.product-page .thumbnails::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 8px; }
+.product-page .thumbnails .thumb { flex: 0 0 auto; width: 72px; height:72px; border-radius:6px; border:1px solid #eef2ff; overflow:hidden; }
+.product-page .thumbnails .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Similar products scroller */
+.similar-products { margin-top: 28px; background: #fff; padding: 18px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.similar-products h3 { margin-bottom: 12px; font-size: 1.25rem; color: #0f172a; }
+.similar-scroller { display:flex; gap: 18px; overflow-x: auto; padding-bottom: 12px; }
+.similar-scroller .similar-item { min-width: 180px; flex: 0 0 auto; text-decoration: none; color: inherit; }
+.similar-thumb { width: 160px; height: 160px; background:#fafafa; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid #f1f5f9; }
+.similar-thumb img { width:100%; height:100%; object-fit:contain; display:block; }
+.similar-title { margin-top: 8px; font-size: 0.95rem; color:#0f172a; height:38px; overflow:hidden; }
+.similar-meta { color:#2563eb; font-weight:700; margin-top:6px; }
+
+/* Ratings & Reviews */
+.ratings-reviews { margin-top: 22px; display:flex; gap: 24px; align-items:flex-start; background:#fff; padding:18px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+.ratings-left { width:220px; }
+.rating-summary { padding:8px 0; }
+.rating-value { font-size: 2rem; color:#0f172a; font-weight:700; }
+.rating-count { color:#64748b; font-size:0.95rem; margin-top:6px; }
+.reviews-list { flex:1; }
+.review-thumbs { display:flex; gap:8px; overflow:hidden; margin-bottom:12px; }
+.rev-thumb { width:72px; height:72px; border-radius:6px; overflow:hidden; border:1px solid #eef2ff; }
+.rev-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.review-cards { display:flex; flex-direction:column; gap:12px; }
+.review-card { padding:12px; border-radius:8px; background:#fbfffb; border:1px solid #e6f3ea; }
+.rev-badge { font-weight:700; color:#16a34a; margin-bottom:6px; }
+.rev-text { margin-bottom:6px; color:#0f172a; }
+.rev-user { color:#94a3b8; font-size:0.9rem; }
+
+/* small utility classes to replace inline styles */
+.action-row { display:flex; gap:8px; margin-block-start:12px; }
+.btn-buy-now { margin-inline-start:8px; }
+.rating-center { text-align:center; }
+.star-clickable { margin-inline-end:6px; cursor:pointer; font-size:1.4rem; }
+.rating-meta { margin-block-start:8px; color:#64748b; font-size:0.95rem; }
+
+/* review form */
+.reviews-actions { display:flex; gap:12px; margin-block-start:12px; align-items:center; }
+.review-form { margin-block-start:12px; display:flex; flex-direction:column; gap:8px; }
+.review-form-stars { display:flex; gap:6px; }
+.star-select { background:none; border:none; font-size:1.4rem; cursor:pointer; opacity:0.5; }
+.star-select.selected { color:#f59e0b; opacity:1; }
+.review-comment { min-block-size:80px; padding:8px; border-radius:6px; border:1px solid #e6edf7; }
+.review-form-actions { display:flex; gap:8px; }
+.mt-8 { margin-block-start:8px; }
+
 .product-page .images img {
   width: 100%;
   max-width: 500px;
@@ -1405,6 +1506,8 @@ button, .btn-primary, .btn-secondary {
 .product-page .info {
   flex: 1;
 }
+
+.original-price { text-decoration: line-through; color: #94a3b8; font-size: 0.9rem; }
 
 .product-page .info h2 {
   font-size: 2rem;

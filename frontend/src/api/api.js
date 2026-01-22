@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// In development use a relative /api base so Vite's dev server proxy (vite.config.mjs)
-// forwards requests to the backend without invoking browser CORS. In production
-// use the configured VITE_API_URL or fallback to localhost.
-const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
+// In development, talk directly to the backend server to avoid proxy mismatches
+// (some local setups route /api through the dev server and return an HTML error).
+// In production use the configured VITE_API_URL or fallback to localhost.
+const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || 'http://localhost:5001') : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
 
 const api = axios.create({
   baseURL: (API_BASE ? API_BASE + '/api' : '/api'),

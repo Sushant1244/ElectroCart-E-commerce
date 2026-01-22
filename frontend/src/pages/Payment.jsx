@@ -34,10 +34,12 @@ export default function Payment() {
       // If user chose Khalti, call backend initiate endpoint and redirect to Khalti payment page
       if (method === 'khalti' && created && created._id) {
         try {
+          // Khalti expects amount in paisa (or the provider's minor currency unit) — multiply by 100 for NPR
+          const khaltiAmount = Math.round(total * 100);
           const initPayload = {
             return_url: `${window.location.origin}/orders?from=khalti&order=${created._id}`,
             website_url: window.location.origin,
-            amount: Math.round(total),
+            amount: khaltiAmount,
             purchase_order_id: created._id,
             // customer info helps on provider side (optional)
             customer_info: {

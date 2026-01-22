@@ -89,8 +89,8 @@ export default function Header({ user, onLogout }) {
       <header className="header">
         <div className="container header-content">
           <div className="brand">
-            <Link to="/">
-              <span className="brand-icon">E</span>
+            <Link to="/" className="brand-link">
+              <img src="/uploads/logo.png" alt="Elecrocart" className="brand-logo" />
               <span className="brand-text">Elecrocart</span>
             </Link>
           </div>
