@@ -17,28 +17,20 @@ router.get('/by-id/:id', getProductById);
 router.get('/:slug', getProductBySlug);
 
 // allow authenticated users to post reviews/ratings for a product
-router.post('/:id/reviews', authMiddleware, async (req, res, next) => {
-  // delegate to controller function if present
+// list reviews for a product
+router.get('/:id/reviews', async (req, res, next) => {
   try {
-    const { rating, comment } = req.body;
-    // simple validation
-    if (!rating) return res.status(400).json({ message: 'Rating is required' });
-    // attach user to request (authMiddleware sets req.user)
-    // call controller method (if exported)
     const productController = require('../controllers/productController');
-    if (typeof productController.addReview === 'function') {
-      return productController.addReview(req, res, next);
-    }
-    // fallback: update numeric rating on product directly via adapter
-    const adapter = require('../models/adapter');
-    const id = req.params.id;
-    const prod = await adapter.Product.findById(id);
-    if (!prod) return res.status(404).json({ message: 'Product not found' });
-    const r = Number(rating);
-    const newNum = (prod.numReviews || 0) + 1;
-    const newRating = ((prod.rating || 0) * (prod.numReviews || 0) + r) / newNum;
-    const updated = await adapter.Product.findByIdAndUpdate(id, { rating: newRating, numReviews: newNum });
-    return res.json(updated);
+    if (typeof productController.listReviews === 'function') return productController.listReviews(req, res, next);
+    return res.status(501).json({ message: 'Not implemented' });
+  } catch (e) { return next(e); }
+});
+
+router.post('/:id/reviews', authMiddleware, async (req, res, next) => {
+  try {
+    const productController = require('../controllers/productController');
+    if (typeof productController.addReview === 'function') return productController.addReview(req, res, next);
+    return res.status(501).json({ message: 'Not implemented' });
   } catch (e) { return next(e); }
 });
 
