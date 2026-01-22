@@ -10,6 +10,7 @@ const orderRoutes = require('./routes/orders');
 const analyticsRoutes = require('./routes/analytics');
 const uploadsRoutes = require('./routes/uploads');
 const paymentsRoutes = require('./routes/payments');
+const notificationsRoutes = require('./routes/notifications');
 const pgConfig = require('./config/sequelize');
 let pgProductsRouter = null;
 // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
@@ -113,6 +114,7 @@ app.use('/api/analytics', analyticsRoutes);
 // uploads listing
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // If PG is enabled, mount PG product routes under /api/pg/products
 if (pgProductsRouter) {
