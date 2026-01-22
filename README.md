@@ -215,11 +215,8 @@ Notes:
 ## Start services (development)
 
 1) Start backend (default port 5001):
-
-```bash
 cd backend
 npm start
-# or for auto-reload during development
 npm run dev
 ```
 
@@ -227,9 +224,7 @@ npm run dev
 
 ```bash
 cd frontend
-npm run dev
 ```
-
 3) Open the app in your browser (Vite URL printed by the command, typically `http://localhost:5173`).
 
 ---
@@ -253,8 +248,6 @@ psql -c "CREATE DATABASE electrocart;"
 POSTGRES_URL=postgres://dbuser:dbpass@localhost:5432/electrocart
 ```
 
-3) Seed the database (PG seeder):
-
 ```bash
 cd backend
 # this script uses POSTGRES_URL to connect and will create tables + demo data
@@ -265,8 +258,6 @@ npm run seed:pg
 
 ```bash
 # runs ensure_admin_and_seed_products.js which reads demo data from frontend/src/data/demoProducts.js
-node ensure_admin_and_seed_products.js
-```
 
 Notes on seeding
 - `seed_pg.js` will `sync({ force: true })` the schema during seeding. Use with care; it drops existing tables.
@@ -274,10 +265,7 @@ Notes on seeding
 
 ---
 
-## Running in demo mode (no DB)
-
 If you don't supply `POSTGRES_URL`, the backend runs in demo/offline mode and returns demo product data. This is useful for quick UI work without installing Postgres.
-
 ---
 
 ## Seeded admin user
@@ -285,9 +273,7 @@ If you don't supply `POSTGRES_URL`, the backend runs in demo/offline mode and re
 When seeding is run (PG seed or ensure_admin), a demo admin is created. Default credentials (for development only):
 
 - Email: `admin@example.com`
-- Password: `admin123` (or see seed scripts — some seeds set a placeholder hashed password)
 
----
 
 ## Useful backend scripts
 
@@ -344,5 +330,40 @@ Here are a few additional screenshots stored under `backend/uploads` used by the
 
 Tell me which enhancement you'd like next and I'll add it.
 ### Authentication
+## Payments (Khalti) integration — NEW
+
+This project now includes an integrated Khalti payment provider flow (client widget + server verify) so you can accept online payments (Khalti is a popular payment gateway in Nepal).
+
+Key points:
+- Frontend opens the Khalti widget after an order is created. The widget returns a short-lived token which the frontend posts to the backend for server-side verification.
+- Backend endpoints:
+	- `POST /api/payments/khati/initiate` — initiate server-side session with Khalti (stores pidx in order when returned)
+	- `POST /api/payments/khati/verify` — verify a client token and mark the order paid on success
+	- `POST /api/payments/khati/debug-verify` — dev helper that returns the raw Khalti response for troubleshooting (do not expose in production)
+	- `GET /api/payments/khati/config` — returns the public key and environment for the frontend to read at runtime
+
+Environment variables (backend `.env`):
+
+```env
+# Khalti keys
+KHALTI_ENV=production   # or 'dev' for sandbox
+KHALTI_SECRET_KEY=<your_khalti_secret_here>
+# optional (live/public)
+KHALTI_LIVE_PUBLIC_KEY=<your_khalti_public_here>
+```
+
+Frontend `.env` (optional):
+```env
+VITE_KHALTI_PUBLIC_KEY=<your_khalti_public_here>
+VITE_API_URL=http://localhost:5001
+```
+
+Local testing tips:
+- For local development use Khalti sandbox/dev keys and set `KHALTI_ENV=dev` so tokens work from `localhost`.
+- If you must use live keys while testing from `localhost`, add your dev origin (e.g. `http://localhost:5173`) to the allowed origins in your Khalti merchant dashboard.
+- Use the `/api/payments/khati/debug-verify` endpoint to inspect raw provider responses when troubleshooting (the frontend also calls this endpoint before the official verify when running in dev mode).
+
+Security note: Never commit live secrets to version control. Keep `KHALTI_SECRET_KEY` out of the repo and use environment variables or a secret manager in production.
+
 
 - `POST /api/auth/register` - Register new user
