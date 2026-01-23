@@ -337,7 +337,7 @@ This project now includes an integrated Khalti payment provider flow (client wid
 Key points:
 - Frontend opens the Khalti widget after an order is created. The widget returns a short-lived token which the frontend posts to the backend for server-side verification.
 - Backend endpoints:
-	- `POST /api/payments/khati/initiate` — initiate server-side session with Khalti (stores pidx in order when returned)
+	- `POST /api/payments/khati/initiate` — initiate server-side session with Khalti (stores pidx in ordqqqer when returned)
 	- `POST /api/payments/khati/verify` — verify a client token and mark the order paid on success
 	- `POST /api/payments/khati/debug-verify` — dev helper that returns the raw Khalti response for troubleshooting (do not expose in production)
 	- `GET /api/payments/khati/config` — returns the public key and environment for the frontend to read at runtime
