@@ -17,6 +17,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 // AdminWelcome removed; consolidate to single public welcome page at /welcome
 import UserWelcome from './pages/UserWelcome';
 import Orders from './pages/Orders';
+import Wishlist from './pages/Wishlist';
+import ErrorBoundary from './components/ErrorBoundary';
 import AdminAddProduct from './pages/admin/AdminAddProduct';
 import AdminEditProduct from './pages/admin/AdminEditProduct';
 import AdminOrders from './pages/admin/AdminOrders';
@@ -92,6 +94,7 @@ function App(){
           <Route path="/admin/orders" element={ user?.isAdmin ? <AdminOrders /> : <Navigate to="/login" /> } />
           <Route path="/admin/create-order" element={ user?.isAdmin ? <AdminCreateOrder /> : <Navigate to="/login" /> } />
           <Route path="/orders" element={ <Orders /> } />
+          <Route path="/wishlist" element={ <ErrorBoundary><Wishlist /></ErrorBoundary> } />
           <Route path="/contact" element={<div className="container"><h1>Contact Us</h1><p>Email: info@elecrocart.com | Phone: +1234567890</p></div>} />
         </Routes>
       </main>

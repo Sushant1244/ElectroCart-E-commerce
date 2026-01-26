@@ -10,6 +10,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(undefined);
   const [imageUrls, setImageUrls] = useState([]); // array of { local, remote, url }
   const [mainImageObj, setMainImageObj] = useState(null);
+  const [liked, setLiked] = useState(false);
 
   const DEMOS = {
     'alpha-watch-ultra': { _id: 'demo1', name: 'Alpha Watch ultra', slug: 'alpha-watch-ultra', price: 3500, images: ['/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png'], stock: 10, featured: true, description: 'Demo Alpha Watch' },
@@ -101,6 +102,7 @@ export default function ProductPage() {
     if (!product) {
       setImageUrls([]);
       setMainImageObj(null);
+  setLiked(false);
       return;
     }
     // attempt to load the public uploads index to help match messy filenames (spaces, emoji)
@@ -146,7 +148,8 @@ export default function ProductPage() {
       'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png'
     };
 
-    if (candidates.length === 0 && FALLBACK[product.slug]) candidates.push(FALLBACK[product.slug]);
+  const prodSlug = String(product.slug || product._id || product.id || '').toLowerCase();
+  if (candidates.length === 0 && FALLBACK[prodSlug]) candidates.push(FALLBACK[prodSlug]);
 
     // helper: try to match a candidate path to an exact filename in uploadsIndex
     const matchToUploadList = (path) => {
@@ -173,6 +176,17 @@ export default function ProductPage() {
 
     setImageUrls(resolved);
     setMainImageObj(resolved[0] || null);
+  }, [product]);
+
+  useEffect(() => {
+    try {
+      if (!product) return;
+      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      const productId = product._id || product.id || product.slug;
+      setLiked(wishlist.includes(productId));
+    } catch (err) {
+      setLiked(false);
+    }
   }, [product]);
 
   if (product === undefined) return <div className="loading">Loading...</div>;
@@ -294,6 +308,25 @@ export default function ProductPage() {
               e.currentTarget.onerror = null;
             }}
           />
+          <button
+            className={`fav-btn ${liked ? 'liked' : 'outline'}`}
+            aria-label={liked ? 'Remove from wishlist' : 'Add to wishlist'}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              try {
+                const productId = product._id || product.id || product.slug;
+                const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+                const exists = wishlist.includes(productId);
+                const next = exists ? wishlist.filter(x => x !== productId) : [productId, ...wishlist];
+                localStorage.setItem('wishlist', JSON.stringify(next));
+                setLiked(!exists);
+                try { window.dispatchEvent(new CustomEvent('wishlistUpdated', { detail: { productId, added: !exists } })); } catch (err) {}
+              } catch (err) {}
+            }}
+          >
+            <span className="heart" aria-hidden>{liked ? '♥' : '♡'}</span>
+          </button>
         </div>
 
         {imageUrls && imageUrls.length > 1 && (

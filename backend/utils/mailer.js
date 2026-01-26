@@ -19,14 +19,15 @@ if (SMTP_HOST && SMTP_USER) {
 } else {
   // fallback stub transport when SMTP is not configured (development)
   transporter = {
-    sendMail: async (opts) => {
+    sendMail: (opts) => {
+      // log and return a resolved promise to emulate nodemailer behaviour
       console.log('[mailer stub] sendMail called with:', {
         from: opts.from,
         to: opts.to,
         subject: opts.subject,
         text: opts.text,
       });
-      return { accepted: [opts.to] };
+      return Promise.resolve({ accepted: [opts.to] });
     },
   };
 }

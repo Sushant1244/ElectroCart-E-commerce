@@ -8,6 +8,7 @@ export default function Header({ user, onLogout }) {
   const location = useLocation();
   const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   React.useEffect(() => {
     const updateCartCount = () => {
@@ -23,13 +24,24 @@ export default function Header({ user, onLogout }) {
       setCartCount(cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0));
     };
     updateCartCount();
+    const updateWishlist = () => {
+      try {
+        const list = JSON.parse(localStorage.getItem('wishlist') || '[]');
+        setWishlistCount(Array.isArray(list) ? list.length : 0);
+      } catch (e) { setWishlistCount(0); }
+    };
+    updateWishlist();
     window.addEventListener('storage', updateCartCount);
     // also listen for in-tab cart updates
     window.addEventListener('cartUpdated', updateCartCount);
+    window.addEventListener('wishlistUpdated', updateWishlist);
+    window.addEventListener('storage', updateWishlist);
     const interval = setInterval(updateCartCount, 1000);
     return () => {
       window.removeEventListener('storage', updateCartCount);
       window.removeEventListener('cartUpdated', updateCartCount);
+      window.removeEventListener('wishlistUpdated', updateWishlist);
+      window.removeEventListener('storage', updateWishlist);
       clearInterval(interval);
     };
   }, []);
@@ -116,6 +128,7 @@ export default function Header({ user, onLogout }) {
                 {/* search button removed per request; Enter key in input still triggers search */}
               </div>
               <NotificationDropdown />
+              <Link to="/wishlist" className="icon-btn" aria-label={`Wishlist with ${wishlistCount} items`} style={{ marginRight: 8 }}>💜{wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}</Link>
               <Link to="/cart" className="icon-btn cart-icon" aria-label={`Cart with ${cartCount} items`}>🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
             </div>
         </div>

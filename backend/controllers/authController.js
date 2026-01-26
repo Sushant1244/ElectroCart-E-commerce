@@ -54,12 +54,12 @@ exports.register = async (req, res) => {
     const user = await adapter.User.create(createData);
   const token = jwt.sign({ id: user._id || user.id }, JWT_SECRET, { expiresIn: '7d' });
     // send welcome email in background (non-blocking)
-    sendMail(
+    Promise.resolve(sendMail(
       user.email,
       'Welcome to ElectroCart',
       `Hi ${user.name || ''},\n\nThanks for registering at ElectroCart!`,
       `<p>Hi ${user.name || ''},</p><p>Thanks for registering at <strong>ElectroCart</strong>!</p>`
-    ).catch((err) => console.error('Welcome email failed:', err && err.message ? err.message : err));
+    )).catch((err) => console.error('Welcome email failed:', err && err.message ? err.message : err));
 
   res.json({ token, user: { id: user._id || user.id, email: user.email, name: user.name, isAdmin: user.isAdmin } });
   } catch (e) {
@@ -137,14 +137,14 @@ exports.forgotPassword = async (req, res) => {
           await setResetTokenForEmail(email, hashed, Date.now() + 10 * 60 * 1000);
           // send email and return generic success
           const resetUrlMem = `${req.protocol}://${req.get('host')}/reset-password/${resetToken}`;
-          try {
-            sendMail(
-              email,
-              'Reset your ElectroCart password',
-              `You requested a password reset. Use the following link to reset your password: ${resetUrlMem}`,
-              `<p>Reset link: <a href="${resetUrlMem}">${resetUrlMem}</a></p>`
-            ).catch(() => {});
-          } catch (e) { /* ignore */ }
+            try {
+              Promise.resolve(sendMail(
+                email,
+                'Reset your ElectroCart password',
+                `You requested a password reset. Use the following link to reset your password: ${resetUrlMem}`,
+                `<p>Reset link: <a href="${resetUrlMem}">${resetUrlMem}</a></p>`
+              )).catch(() => {});
+            } catch (e) { /* ignore */ }
           return res.json({ message: 'If email exists, password reset link has been sent', success: true });
         }
       } catch (e) {
@@ -171,12 +171,12 @@ exports.forgotPassword = async (req, res) => {
   exports.__devLastReset[email] = { resetToken, hashed, expiresAt: Date.now() + 10 * 60 * 1000 };
     // Send reset link via email (non-blocking). In dev this uses the mailer stub which logs the message.
     try {
-      sendMail(
+      Promise.resolve(sendMail(
         email,
         'Reset your ElectroCart password',
         `You requested a password reset. Use the following link to reset your password: ${resetUrl}`,
         `<p>You requested a password reset. Click the link below to reset your password (expires in 10 minutes):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
-      ).catch((err) => console.error('Forgot password email failed:', err && err.message ? err.message : err));
+      )).catch((err) => console.error('Forgot password email failed:', err && err.message ? err.message : err));
     } catch (mailErr) {
       console.error('sendMail threw:', mailErr && mailErr.message ? mailErr.message : mailErr);
     }

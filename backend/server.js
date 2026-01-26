@@ -13,47 +13,51 @@ const paymentsRoutes = require('./routes/payments');
 const notificationsRoutes = require('./routes/notifications');
 const pgConfig = require('./config/sequelize');
 let pgProductsRouter = null;
-// If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
-if (pgConfig && pgConfig.sequelize) {
-  const { sequelize } = pgConfig;
-  (async () => {
-    try {
-      await sequelize.authenticate();
-      console.log('Postgres (Sequelize) connected');
-      // In development, allow automatic schema sync when PG_SYNC env var is truthy
-      if (process.env.PG_SYNC === 'true') {
-        await sequelize.sync({ alter: true });
-        console.log('Postgres schema synchronized (alter)');
-      } else {
-        console.log('Postgres schema not synchronized automatically. To auto-create tables in dev set PG_SYNC=true and restart the server.');
-      }
-      // Convenience: if running locally (not production), ensure the `reviews` table exists
-      // This helps devs who have Postgres configured but haven't run migrations yet.
+// Only initialize Postgres when running the server directly. This avoids
+// starting background DB connections during tests which can leave open handles.
+if (require.main === module) {
+  // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
+  if (pgConfig && pgConfig.sequelize) {
+    const { sequelize } = pgConfig;
+    (async () => {
       try {
-        if (process.env.NODE_ENV !== 'production' && pgConfig && pgConfig.Review) {
-          const qi = sequelize.getQueryInterface();
-          const tables = await qi.showAllTables();
-          // showAllTables can return array of objects or strings depending on dialect/config
-          const tableNames = (tables || []).map(t => (typeof t === 'string' ? t : (t.tableName || t.name))).map(n => String(n).toLowerCase());
-          if (!tableNames.includes('reviews')) {
-            console.log('`reviews` table missing — creating via Review.sync() (development only)');
-            await pgConfig.Review.sync({ alter: true });
-            console.log('`reviews` table created/updated');
-          }
+        await sequelize.authenticate();
+        console.log('Postgres (Sequelize) connected');
+        // In development, allow automatic schema sync when PG_SYNC env var is truthy
+        if (process.env.PG_SYNC === 'true') {
+          await sequelize.sync({ alter: true });
+          console.log('Postgres schema synchronized (alter)');
+        } else {
+          console.log('Postgres schema not synchronized automatically. To auto-create tables in dev set PG_SYNC=true and restart the server.');
         }
-      } catch (e) {
-        console.warn('Failed to auto-create `reviews` table (dev helper):', e && e.message ? e.message : e);
+        // Convenience: if running locally (not production), ensure the `reviews` table exists
+        // This helps devs who have Postgres configured but haven't run migrations yet.
+        try {
+          if (process.env.NODE_ENV !== 'production' && pgConfig && pgConfig.Review) {
+            const qi = sequelize.getQueryInterface();
+            const tables = await qi.showAllTables();
+            // showAllTables can return array of objects or strings depending on dialect/config
+            const tableNames = (tables || []).map(t => (typeof t === 'string' ? t : (t.tableName || t.name))).map(n => String(n).toLowerCase());
+            if (!tableNames.includes('reviews')) {
+              console.log('`reviews` table missing — creating via Review.sync() (development only)');
+              await pgConfig.Review.sync({ alter: true });
+              console.log('`reviews` table created/updated');
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to auto-create `reviews` table (dev helper):', e && e.message ? e.message : e);
+        }
+      } catch (err) {
+        console.error('Sequelize connection failed:', err.message || err);
       }
-    } catch (err) {
-      console.error('Sequelize connection failed:', err.message || err);
-    }
-  })();
+    })();
 
-  try {
-    const pgProductsFactory = require('./routes/pgProducts');
-    pgProductsRouter = pgProductsFactory(pgConfig);
-  } catch (err) {
-    console.error('Failed to load PG routes', err.message);
+    try {
+      const pgProductsFactory = require('./routes/pgProducts');
+      pgProductsRouter = pgProductsFactory(pgConfig);
+    } catch (err) {
+      console.error('Failed to load PG routes', err.message);
+    }
   }
 }
 
@@ -125,25 +129,30 @@ app.get('/', (req, res) => res.send('API running'));
 
 // Start server with an error handler to gracefully report listen errors
 const LISTEN_HOST = process.env.LISTEN_HOST || '0.0.0.0';
-const server = app.listen(PORT, LISTEN_HOST, () => console.log(`Server running on ${LISTEN_HOST}:${PORT}`));
 
-server.on('error', (err) => {
-  if (err && err.code === 'EADDRINUSE') {
-    console.error(`ERROR: Port ${PORT} is already in use. Stop the process using the port or set a different PORT env var.`);
-    // Attempt a helpful diagnostic: print processes listening on the port
-    const { execSync } = require('child_process');
-    try {
-      const out = execSync(`lsof -i :${PORT} -sTCP:LISTEN -Pn || true`, { encoding: 'utf8' });
-      console.error('Processes listening on the port:\n', out);
-    } catch (e) {
-      console.error('Failed to run lsof for diagnostics:', e.message || e);
+function startServer() {
+  const server = app.listen(PORT, LISTEN_HOST, () => console.log(`Server running on ${LISTEN_HOST}:${PORT}`));
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.error(`ERROR: Port ${PORT} is already in use. Stop the process using the port or set a different PORT env var.`);
+      // Attempt a helpful diagnostic: print processes listening on the port
+      const { execSync } = require('child_process');
+      try {
+        const out = execSync(`lsof -i :${PORT} -sTCP:LISTEN -Pn || true`, { encoding: 'utf8' });
+        console.error('Processes listening on the port:\n', out);
+      } catch (e) {
+        console.error('Failed to run lsof for diagnostics:', e.message || e);
+      }
+      process.exit(1);
+    } else {
+      console.error('Server error:', err && err.stack ? err.stack : err);
+      process.exit(1);
     }
-    process.exit(1);
-  } else {
-    console.error('Server error:', err && err.stack ? err.stack : err);
-    process.exit(1);
-  }
-});
+  });
+
+  return server;
+}
 
 // Global error handler (development friendly) — logs stack and returns minimal message
 app.use((err, req, res, next) => {
@@ -154,3 +163,10 @@ app.use((err, req, res, next) => {
   }
   res.status(500).json({ message: err && err.message ? err.message : '' });
 });
+
+// If run directly, start the server. Otherwise export the app for tests.
+if (require.main === module) {
+  startServer();
+} else {
+  module.exports = { app, startServer };
+}

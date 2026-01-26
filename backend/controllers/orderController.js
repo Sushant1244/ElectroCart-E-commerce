@@ -76,7 +76,7 @@ exports.createOrder = async (req, res) => {
             try {
               const { wrapHtml } = require('../utils/emailTemplates');
               const html = wrapHtml('Payment failed', `<p>We could not process your payment. Reason: ${failedMsg}</p><p>If you were charged, contact support.</p>`);
-              sendMail(email, 'Payment failed for your order', `Payment failed: ${failedMsg}`, html).catch(() => {});
+              Promise.resolve(sendMail(email, 'Payment failed for your order', `Payment failed: ${failedMsg}`, html)).catch(() => {});
             } catch (e) { console.error('Failed to send payment-failed email', e && e.message ? e.message : e); }
           }
         } catch (e) { console.error('Error handling failed payment notification', e && e.message ? e.message : e); }
@@ -137,11 +137,13 @@ exports.createOrder = async (req, res) => {
     // Send notification to user and email about order creation
     try {
       const notif = await adapter.Notification.create({ userId: userId || null, title: 'Order placed', body: `Your order ${order.id || order._id} has been placed successfully.`, meta: { orderId: order.id || order._id } });
-      // send email if user email available
-      if (order.email) {
+      // determine recipient email: prefer order.email, otherwise use authenticated user's email
+      const recipientEmail = (order && (order.email || order.emailAddress)) || (req.user && req.user.email) || null;
+      if (recipientEmail) {
         try {
           const html = orderPlacedHtml({ order, clientUrl: process.env.CLIENT_URL || '' });
-          sendMail(order.email, `Order ${order.id || order._id} confirmation`, `Your order ${order.id || order._id} has been placed.`, html).catch(() => {});
+          // send asynchronously but don't block order creation response
+          Promise.resolve(sendMail(recipientEmail, `Order ${order.id || order._id} confirmation`, `Your order ${order.id || order._id} has been placed.`, html)).catch(() => {});
         } catch (e) { console.error('Failed to generate/send orderPlaced email', e); }
       }
     } catch (e) { console.error('Notification/email after createOrder failed', e && e.message ? e.message : e); }
@@ -214,7 +216,7 @@ exports.updateOrderStatus = async (req, res) => {
       if (updated.email) {
         try {
           const html = orderStatusHtml({ order: updated, clientUrl: process.env.CLIENT_URL || '' });
-          sendMail(updated.email, `Update for order ${updated.id || updated._id}`, `Status: ${updated.status || updated.deliveryStatus}`, html).catch(() => {});
+          Promise.resolve(sendMail(updated.email, `Update for order ${updated.id || updated._id}`, `Status: ${updated.status || updated.deliveryStatus}`, html)).catch(() => {});
         } catch (e) { console.error('Failed to generate/send orderStatus email', e); }
       }
     } catch (e) { console.error('Notification/email after updateOrderStatus failed', e && e.message ? e.message : e); }
@@ -262,7 +264,7 @@ exports.cancelOrder = async (req, res) => {
         const { wrapHtml } = require('../utils/emailTemplates');
         const { sendMail } = require('../utils/mailer');
         const html = wrapHtml('Order cancelled', `<p>Your order <strong>${updated.id || updated._id}</strong> has been cancelled. If this was a mistake, contact support.</p>`);
-        sendMail(updated.email, `Order ${updated.id || updated._id} cancelled`, `Order cancelled`, html).catch(() => {});
+        Promise.resolve(sendMail(updated.email, `Order ${updated.id || updated._id} cancelled`, `Order cancelled`, html)).catch(() => {});
       }
     } catch (e) { console.error('Failed to notify on cancel', e && e.message ? e.message : e); }
 

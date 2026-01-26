@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import API from '../api/api';
 import { resolveImageSrc } from '../utils/resolveImage';
 
 export default function ProductCard({ p }) {
   const navigate = useNavigate();
+  const [liked, setLiked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      const productId = p._id || p.id || p.productId || p.slug;
+      setLiked(wishlist.includes(productId));
+    } catch (err) {
+      setLiked(false);
+    }
+  }, [p]);
   // Fallback map: when the API returns generic names (Image 1.png) or images are missing,
   // use a known filename from backend/uploads based on product slug.
   const UPLOAD_FALLBACK = {
@@ -32,7 +43,7 @@ export default function ProductCard({ p }) {
   // prefer the first product image unless it's a generic 'Image X' filename
   const rawFirst = Array.isArray(p.images) ? p.images[0] : p.images;
   let img;
-  const slugKey = (p.slug || '').toLowerCase();
+  const slugKey = String((p && (p.slug ?? p._id ?? p.id)) || '').toLowerCase();
   if (rawFirst && !String(rawFirst).includes('Image ')) img = getImageUrl(rawFirst);
   else if (UPLOAD_FALLBACK[slugKey]) img = getImageUrl(UPLOAD_FALLBACK[slugKey]);
   else if (p.name && /watch/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['alpha-watch-ultra']);
@@ -147,6 +158,29 @@ export default function ProductCard({ p }) {
               }}
             />
           </div>
+          <button
+            className={`card-fav ${liked ? 'liked' : 'outline'}`}
+            aria-label={liked ? 'Remove from wishlist' : 'Add to wishlist'}
+            onClick={(e) => {
+              // prevent outer navigation/click handling
+              e.preventDefault();
+              e.stopPropagation();
+              try {
+                const productId = p._id || p.id || p.productId || p.slug;
+                const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+                const exists = wishlist.includes(productId);
+                let next = [];
+                if (exists) next = wishlist.filter(x => x !== productId);
+                else next = [productId, ...wishlist];
+                localStorage.setItem('wishlist', JSON.stringify(next));
+                setLiked(!exists);
+              } catch (err) {
+                // ignore storage errors
+              }
+            }}
+          >
+            <span className="heart" aria-hidden>{liked ? '♥' : '♡'}</span>
+          </button>
         </div>
 
         <div className="product-rating">
@@ -163,7 +197,7 @@ export default function ProductCard({ p }) {
         )}
         
         <div className="product-pricing">
-          <span className="current-price">Rs {p.price?.toLocaleString()}</span>
+          <span className="current-price">{p.price != null ? `Rs ${p.price?.toLocaleString()}` : <span className="no-price">Rs —</span>}</span>
           {p.originalPrice && p.originalPrice > p.price && (
             <span className="original-price">Rs {p.originalPrice?.toLocaleString()}</span>
           )}

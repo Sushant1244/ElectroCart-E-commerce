@@ -28,7 +28,7 @@ exports.createNotification = async (req, res) => {
         const user = await adapter.User.findById(userId);
         if (user && user.email) {
               const html = wrapHtml(title, `<p>${body || ''}</p><p><a href="${process.env.CLIENT_URL || ''}/orders" style="display:inline-block;padding:8px 12px;background:#2563eb;color:white;border-radius:6px;text-decoration:none">View Orders</a></p>`);
-              sendMail(user.email, title, body || '', html).catch(() => {});
+              Promise.resolve(sendMail(user.email, title, body || '', html)).catch(() => {});
             }
       } catch (e) { /* ignore */ }
     }
