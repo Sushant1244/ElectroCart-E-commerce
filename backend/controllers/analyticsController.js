@@ -6,7 +6,11 @@ exports.getSalesStats = async (req, res) => {
     // adding raw SQL queries or a dedicated analytics table.
     const orders = await adapter.Order.find ? await adapter.Order.findAll ? await adapter.Order.findAll() : await adapter.Order.find() : [];
 
-    const paidOrders = (Array.isArray(orders) ? orders : []).filter(o => o.paid || o.paid === true || o.paid === 'true');
+    // Orders in different adapters may use `isPaid` or `paid` as the boolean flag.
+    // Treat either as meaning the order was paid.
+    const paidOrders = (Array.isArray(orders) ? orders : []).filter(o => {
+      return Boolean(o.isPaid === true || o.isPaid === 'true' || o.paid === true || o.paid === 'true' || o.isPaid || o.paid);
+    });
     const totalSales = paidOrders.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
     const totalOrders = paidOrders.length;
 
