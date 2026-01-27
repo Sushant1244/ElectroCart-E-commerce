@@ -150,13 +150,7 @@ export default function AdminDashboard() {
   });
 
   // Derived stats with safe fallbacks
-  // Prefer analytics.totalSales when present. If analytics is not available, fall back
-  // to summing salesByMonth (if provided) or summing the loaded orders as a last resort.
-  const totalRevenue = (
-    (analytics && typeof analytics.totalSales === 'number' ? Number(analytics.totalSales) : null) ??
-    (analytics && Array.isArray(analytics.salesByMonth) ? analytics.salesByMonth.reduce((s, r) => s + (Number(r.total) || 0), 0) : null) ??
-    (orders && orders.length ? orders.reduce((s, o) => s + (Number(o.total) || 0), 0) : 0)
-  );
+  // totalOrders can be derived from analytics or orders
   const totalOrders = analytics?.totalOrders || (orders.length || 0);
   // Top products: prefer analytics payload; otherwise derive from product.sold; if still empty, derive from recent orders
   let topProducts = analytics?.topProducts || products.slice().sort((a, b) => (b.sold || 0) - (a.sold || 0)).slice(0, 6).map(p => ({ productId: p._id, productName: p.name, totalSold: p.sold || 0, price: p.price, image: p.images?.[0] || UPLOAD_FALLBACK[p.slug] }));
@@ -234,6 +228,14 @@ export default function AdminDashboard() {
   console.debug('AdminDashboard salesByMonth:', salesByMonth);
 
   const hasRevenue = Array.isArray(salesByMonth) && salesByMonth.some(r => Number(r.total) > 0);
+
+  // Compute totalRevenue after salesByMonth has been finalized so fallbackSales are included
+  const totalRevenue = (
+    (analytics && typeof analytics.totalSales === 'number' ? Number(analytics.totalSales) : null) ??
+    (Array.isArray(salesByMonth) ? salesByMonth.reduce((s, r) => s + (Number(r.total) || 0), 0) : null) ??
+    (orders && orders.length ? orders.reduce((s, o) => s + (Number(o.total) || 0), 0) : 0)
+  );
+  console.debug('AdminDashboard totalRevenue:', totalRevenue);
 
   const weeklySales = (analytics?.weeklySales || [
     { day: 'Mon', sales: 140 },
