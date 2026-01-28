@@ -337,10 +337,10 @@ This project now includes an integrated Khalti payment provider flow (client wid
 Key points:
 - Frontend opens the Khalti widget after an order is created. The widget returns a short-lived token which the frontend posts to the backend for server-side verification.
 - Backend endpoints:
-	- `POST /api/payments/khati/initiate` — initiate server-side session with Khalti (stores pidx in ordqqqer when returned)
-	- `POST /api/payments/khati/verify` — verify a client token and mark the order paid on success
-	- `POST /api/payments/khati/debug-verify` — dev helper that returns the raw Khalti response for troubleshooting (do not expose in production)
-	- `GET /api/payments/khati/config` — returns the public key and environment for the frontend to read at runtime
+	- `POST /api/payments/khalti/initiate` — initiate server-side session with Khalti (stores pidx in ordqqqer when returned)
+	- `POST /api/payments/khalti/verify` — verify a client token and mark the order paid on success
+	- `POST /api/payments/khalti/debug-verify` — dev helper that returns the raw Khalti response for troubleshooting (do not expose in production)
+	- `GET /api/payments/khalti/config` — returns the public key and environment for the frontend to read at runtime
 
 Environment variables (backend `.env`):
 
@@ -361,7 +361,7 @@ VITE_API_URL=http://localhost:5001
 Local testing tips:
 - For local development use Khalti sandbox/dev keys and set `KHALTI_ENV=dev` so tokens work from `localhost`.
 - If you must use live keys while testing from `localhost`, add your dev origin (e.g. `http://localhost:5173`) to the allowed origins in your Khalti merchant dashboard.
-- Use the `/api/payments/khati/debug-verify` endpoint to inspect raw provider responses when troubleshooting (the frontend also calls this endpoint before the official verify when running in dev mode).
+ - Use the `/api/payments/khalti/debug-verify` endpoint to inspect raw provider responses when troubleshooting (the frontend also calls this endpoint before the official verify when running in dev mode).
 
 Security note: Never commit live secrets to version control. Keep `KHALTI_SECRET_KEY` out of the repo and use environment variables or a secret manager in production.
 
