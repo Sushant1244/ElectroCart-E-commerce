@@ -21,6 +21,32 @@ async function findUserByEmail(email) {
   return users.get(email) || null;
 }
 
+async function setEmailVerificationToken(email, hashedToken, expireAt) {
+  const u = users.get(email);
+  if (!u) return false;
+  u.emailVerificationToken = hashedToken;
+  u.emailVerificationExpire = expireAt;
+  u.emailVerified = false;
+  users.set(email, u);
+  console.log('[inMemoryAuth] set email verification token for', email, { hashedToken, expireAt });
+  return true;
+}
+
+async function verifyEmailByHashedToken(hashedToken) {
+  for (const [email, u] of users.entries()) {
+    if (!u.emailVerificationToken) continue;
+  // Require expiry to be present and in the future.
+  if (u.emailVerificationToken === hashedToken && (u.emailVerificationExpire && u.emailVerificationExpire > Date.now())) {
+      u.emailVerified = true;
+      u.emailVerificationToken = null;
+      u.emailVerificationExpire = null;
+      users.set(email, u);
+      return { ok: true, email };
+    }
+  }
+  return { ok: false };
+}
+
 async function setResetTokenForEmail(email, hashedToken, expireAt) {
   const u = users.get(email);
   if (!u) return false;
@@ -56,3 +82,6 @@ async function resetPasswordByHashedToken(hashedToken, newPassword) {
 module.exports = { createUser, findUserByEmail, setResetTokenForEmail, resetPasswordByHashedToken };
 // Debug helper
 module.exports.getAllUsers = () => Array.from(users.values()).map(u => ({ ...u }));
+// Email verification helpers (dev-only)
+module.exports.setEmailVerificationToken = setEmailVerificationToken;
+module.exports.verifyEmailByHashedToken = verifyEmailByHashedToken;

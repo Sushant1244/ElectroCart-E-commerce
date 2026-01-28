@@ -23,7 +23,19 @@ export default function Wishlist() {
       // fetch each product in background and merge results as they arrive
       ids.forEach(async (id) => {
         try {
-          const res = await API.get(`/products/${encodeURIComponent(id)}`).then(r => r.data).catch(() => null);
+          // try direct lookup by slug or id
+          let res = null;
+          try { res = await API.get(`/products/${encodeURIComponent(id)}`).then(r => r.data).catch(() => null); } catch (e) { res = null; }
+          if (!res) {
+            // fallback: fetch all products and try to match by _id, id, or slug
+            try {
+              const list = await API.get('/products').then(r => r.data).catch(() => null);
+              if (Array.isArray(list)) {
+                const found = list.find(p => String(p._id) === String(id) || String(p.id) === String(id) || String(p.slug) === String(id));
+                if (found) res = found;
+              }
+            } catch (e) { /* ignore */ }
+          }
           if (res) {
             setItems(prev => (prev || []).map(item => (String(item._id) === String(id) ? res : item)));
           }

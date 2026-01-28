@@ -1,5 +1,5 @@
 // Khalti integration endpoints. Configure KHALTI_SECRET_KEY in backend env for live or dev testing.
-// Use POST /api/payments/khati/initiate with the payload shown in the project README or the request in the user's message.
+// Use POST /api/payments/khalti/initiate with the payload shown in the project README or the request in the user's message.
 const express = require('express');
 const https = require('https');
 const { URL } = require('url');
@@ -41,7 +41,7 @@ async function postToKhalti(url, headers = {}, bodyObj = {}) {
 }
 
 // Initiate a Khalti payment session. Expects body as per Khalti API.
-router.post('/khati/initiate', async (req, res) => {
+router.post('/khalti/initiate', async (req, res) => {
   try {
     if (!KHALTI_SECRET) return res.status(500).json({ message: 'KHALTI_SECRET_KEY not configured on server' });
     const payload = req.body || {};
@@ -90,7 +90,7 @@ router.post('/khati/initiate', async (req, res) => {
 
 // Simple helper to fetch payment status from Khalti if needed.
 // Khalti may provide different endpoints for status; this attempts to call a common status endpoint if provided.
-router.post('/khati/status', async (req, res) => {
+router.post('/khalti/status', async (req, res) => {
   try {
     if (!KHALTI_SECRET) return res.status(500).json({ message: 'KHALTI_SECRET_KEY not configured on server' });
     const { pidx } = req.body || {};
@@ -112,7 +112,7 @@ router.post('/khati/status', async (req, res) => {
 // Khalti may POST to this URL with payment updates; we accept pidx and status and update the order accordingly.
 // NOTE (dev): For production you must verify the callback signature and persist the provider session
 // (pidx) and provider response in the Order row so restarts / multi-instance servers can reconcile.
-router.post('/khati/callback', async (req, res) => {
+router.post('/khalti/callback', async (req, res) => {
   try {
     const body = req.body || {};
     const pidx = body.pidx || body.data?.pidx || null;
@@ -159,7 +159,7 @@ router.post('/khati/callback', async (req, res) => {
 });
 
 // Verify a client-side token (for client-widget flow). Expects { token, amount, purchase_order_id }
-router.post('/khati/verify', async (req, res) => {
+router.post('/khalti/verify', async (req, res) => {
   try {
     if (!KHALTI_SECRET) return res.status(500).json({ message: 'KHALTI_SECRET_KEY not configured on server' });
     const { token, amount, purchase_order_id } = req.body || {};
@@ -190,7 +190,7 @@ router.post('/khati/verify', async (req, res) => {
 
 // Dev helper: debug-verify returns raw Khalti response and logs it for troubleshooting.
 // Do NOT enable this in production without access controls.
-router.post('/khati/debug-verify', async (req, res) => {
+router.post('/khalti/debug-verify', async (req, res) => {
   try {
     if (!KHALTI_SECRET) return res.status(500).json({ message: 'KHALTI_SECRET_KEY not configured on server' });
     const { token, amount, purchase_order_id } = req.body || {};
@@ -208,10 +208,8 @@ router.post('/khati/debug-verify', async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // Expose public config for frontend clients (safe to expose public key)
-router.get('/khati/config', (req, res) => {
+router.get('/khalti/config', (req, res) => {
   try {
     const publicKey = process.env.KHALTI_LIVE_PUBLIC_KEY || process.env.KHALTI_PUBLIC_KEY || process.env.KHALTI_LIVE_PUBLIC_KEY || null;
     return res.json({ publicKey, env: KHALTI_ENV });
@@ -219,5 +217,7 @@ router.get('/khati/config', (req, res) => {
     return res.status(500).json({ message: 'failed to read khalti config' });
   }
 });
+
+module.exports = router;
 
 

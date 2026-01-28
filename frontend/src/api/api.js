@@ -1,12 +1,15 @@
 import axios from 'axios';
 
-// In development, talk directly to the backend server to avoid proxy mismatches
-// (some local setups route /api through the dev server and return an HTML error).
+// Use Vite proxy in development (relative '/api') to avoid CORS and origin issues.
 // In production use the configured VITE_API_URL or fallback to localhost.
-const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || 'http://localhost:5001') : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
+// Use Vite proxy in development (relative '/api') to avoid CORS and origin issues.
+// In production use the configured VITE_API_URL or fallback to localhost.
+const baseURL = import.meta.env.DEV
+  ? '/api'
+  : ((import.meta.env.VITE_API_URL || 'http://localhost:5001') + '/api');
 
 const api = axios.create({
-  baseURL: (API_BASE ? API_BASE + '/api' : '/api'),
+  baseURL,
   // Do not force Content-Type globally so multipart/form-data (FormData) requests
   // from admin forms work correctly and let the browser set the boundary.
   withCredentials: false,

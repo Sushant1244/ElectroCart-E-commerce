@@ -128,7 +128,10 @@ export default function Header({ user, onLogout }) {
                 {/* search button removed per request; Enter key in input still triggers search */}
               </div>
               <NotificationDropdown />
-              <Link to="/wishlist" className="icon-btn" aria-label={`Wishlist with ${wishlistCount} items`} style={{ marginRight: 8 }}>💜{wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}</Link>
+              <Link to="/wishlist" className="icon-btn wishlist-icon" aria-label={`Wishlist with ${wishlistCount} items`} style={{ marginRight: 8 }}>
+                <span className="heart-glyph" aria-hidden>♥</span>
+                {wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}
+              </Link>
               <Link to="/cart" className="icon-btn cart-icon" aria-label={`Cart with ${cartCount} items`}>🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
             </div>
         </div>

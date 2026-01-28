@@ -4,6 +4,7 @@
   adapter methods will be present but return null or empty arrays where appropriate.
 */
 const pgConfig = require('../config/sequelize');
+const { Op } = require('sequelize');
 
 const adapter = {};
 
@@ -209,6 +210,23 @@ if (pgConfig && pgConfig.Product) {
       if (!NotificationModel) return null;
       const inst = await NotificationModel.findByPk(id);
       if (!inst) return null; await inst.update(update); await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; return obj;
+    }
+    ,
+    // Delete notifications older than X days, and optionally delete read notifications older than Y days.
+    // Returns number of records deleted.
+    deleteOlderThan: async ({ olderThanDays = 30, readOlderThanDays = 7 } = {}) => {
+      if (!NotificationModel) return 0;
+      try {
+        const now = Date.now();
+        const olderThanDate = new Date(now - (Number(olderThanDays) * 24 * 60 * 60 * 1000));
+        const readOlderDate = new Date(now - (Number(readOlderThanDays) * 24 * 60 * 60 * 1000));
+        const where = { [Op.or]: [ { createdAt: { [Op.lt]: olderThanDate } }, { read: true, createdAt: { [Op.lt]: readOlderDate } } ] };
+        const deleted = await NotificationModel.destroy({ where });
+        return deleted || 0;
+      } catch (e) {
+        console.warn('adapter.Notification.deleteOlderThan failed', e && e.message ? e.message : e);
+        return 0;
+      }
     }
   };
 

@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
     passwordHash: { type: DataTypes.STRING },
   resetPasswordToken: { type: DataTypes.STRING },
   resetPasswordExpire: { type: DataTypes.BIGINT },
+  // Email verification fields for OTP flow
+  emailVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
+  emailVerificationToken: { type: DataTypes.STRING },
+  emailVerificationExpire: { type: DataTypes.BIGINT },
     isAdmin: { type: DataTypes.BOOLEAN, defaultValue: false },
   }, {
     tableName: 'users',

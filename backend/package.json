@@ -1,5 +1,6 @@
 {
   "name": "ecommerce-backend",
+  "type": "commonjs",
   "version": "1.0.0",
   "main": "server.js",
   "license": "MIT",
@@ -9,7 +10,8 @@
     "dev:nodemon": "nodemon server.js",
     "test": "jest --runInBand",
     "seed:pg": "node seed_pg.js",
-    "migrate:create-reviews": "node scripts/create_reviews_table.js"
+  "migrate:create-reviews": "node scripts/create_reviews_table.js",
+  "migrate:cleanup-notifications": "node scripts/cleanup_old_notifications_migration.js"
   },
   "dependencies": {
     "axios": "^1.13.2",

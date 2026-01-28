@@ -174,6 +174,26 @@ export default function ProductCard({ p }) {
                 else next = [productId, ...wishlist];
                 localStorage.setItem('wishlist', JSON.stringify(next));
                 setLiked(!exists);
+                // dispatch update event for header and wishlist page
+                try { window.dispatchEvent(new CustomEvent('wishlistUpdated', { detail: { productId, added: !exists } })); } catch (err) {}
+
+                // create a backend notification for logged-in users (non-blocking)
+                try {
+                  const token = localStorage.getItem('token');
+                  if (token) {
+                    // include product metadata so the notification can render richer content
+                    const productIdMeta = productId;
+                    let imageToStore = null;
+                    try {
+                      const candidate = (Array.isArray(p.images) ? p.images[0] : p.images) || UPLOAD_FALLBACK[(p.slug || '').toLowerCase()] || '';
+                      const { local, remote } = resolveImageSrc(candidate);
+                      imageToStore = remote || local || img || null;
+                    } catch (err) {
+                      imageToStore = img || null;
+                    }
+                    API.post('/notifications', { title: (exists ? 'Removed from wishlist' : 'Added to wishlist'), body: `${p.name} ${exists ? 'removed from' : 'added to'} your wishlist.`, userId: null, meta: { productId: productIdMeta, slug: p.slug, image: imageToStore } }).catch(() => {});
+                  }
+                } catch (err) {}
               } catch (err) {
                 // ignore storage errors
               }

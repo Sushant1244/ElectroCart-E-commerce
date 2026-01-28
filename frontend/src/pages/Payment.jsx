@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/api';
 
@@ -6,6 +6,56 @@ export default function Payment() {
   const navigate = useNavigate();
   const [method, setMethod] = useState('cod');
   const [loading, setLoading] = useState(false);
+  const [khaltiReady, setKhaltiReady] = useState(false);
+  const [khaltiError, setKhaltiError] = useState(null);
+
+  // Preload khalti public key and widget when the user selects Khalti to make UI responsive
+  useEffect(() => {
+    let mounted = true;
+    const prepare = async () => {
+      if (method !== 'khalti') return;
+      setKhaltiError(null);
+      try {
+        let publicKey = import.meta.env.VITE_KHALTI_PUBLIC_KEY || window.__KHALTI_PUBLIC_KEY__ || null;
+          if (!publicKey) {
+          try {
+            const cfg = await API.get('/payments/khalti/config');
+            publicKey = cfg?.data?.publicKey || null;
+          } catch (e) {
+            // backend config fetch failed via proxy; try direct backend URL as a fallback
+            try {
+              const direct = await fetch((import.meta.env.DEV ? 'http://127.0.0.1:5001' : (import.meta.env.VITE_API_URL || 'http://localhost:5001')) + '/api/payments/khalti/config', { method: 'GET' });
+              if (direct && direct.ok) {
+                const data = await direct.json();
+                publicKey = data?.publicKey || null;
+              } else {
+                throw new Error('Direct backend fetch failed');
+              }
+            } catch (e2) {
+              if (mounted) setKhaltiError('Failed to fetch Khalti config (proxy and direct fetch failed)');
+            }
+          }
+        }
+        if (!publicKey) throw new Error('Khalti public key not configured');
+        // Load widget script if missing
+        if (!window.KhaltiCheckout) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://khalti.com/static/khalti-checkout.js';
+            s.async = true;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('Failed to load Khalti script'));
+            document.head.appendChild(s);
+          });
+        }
+        if (mounted) setKhaltiReady(true);
+      } catch (e) {
+        if (mounted) setKhaltiError(e && e.message ? e.message : String(e));
+      }
+    };
+    prepare();
+    return () => { mounted = false; };
+  }, [method]);
 
   // detect stored user to block admins from placing orders in the regular checkout flow
   const storedUser = (() => {
@@ -32,14 +82,16 @@ export default function Payment() {
       // If order was created, navigate to orders page and include id so user can track it
       const created = res?.data;
       // If user chose Khalti, call backend initiate endpoint and redirect to Khalti payment page
-      if (method === 'khalti' && created && created._id) {
+    if (method === 'khalti' && created && created._id) {
         try {
-          // Use Khalti client widget for smoother UX. Ensure public key exists in env
-          let publicKey = import.meta.env.VITE_KHALTI_PUBLIC_KEY || window.__KHALTI_PUBLIC_KEY__ || null;
+      // Use Khalti client widget for smoother UX. Ensure public key exists in env
+      let publicKey = import.meta.env.VITE_KHALTI_PUBLIC_KEY || window.__KHALTI_PUBLIC_KEY__ || null;
+      // If preload detected an error, surface it now and avoid silent failure
+      if (khaltiError) throw new Error('Khalti widget failed to initialise: ' + String(khaltiError));
           // If publicKey not available at build time, fetch from backend config endpoint
           if (!publicKey) {
             try {
-              const cfg = await API.get('/payments/khati/config');
+              const cfg = await API.get('/payments/khalti/config');
               publicKey = cfg?.data?.publicKey || null;
             } catch (e) {
               console.warn('Failed to fetch khalti config from server', e);
@@ -71,7 +123,7 @@ export default function Payment() {
                 try {
                   // First call server debug endpoint to surface raw Khalti response for troubleshooting
                   try {
-                    const dbg = await API.post('/payments/khati/debug-verify', { token: payload.token, amount: payload.amount, purchase_order_id: created._id });
+                    const dbg = await API.post('/payments/khalti/debug-verify', { token: payload.token, amount: payload.amount, purchase_order_id: created._id });
                     console.debug('Khalti debug verify response', dbg && dbg.data);
                     // If debug verify returned non-2xx, surface the body to the user for support
                     if (!(dbg.status >= 200 && dbg.status < 300)) {
@@ -86,7 +138,7 @@ export default function Payment() {
                   }
 
                   // If debug shows OK, call official verify to mark order paid
-                  await API.post('/payments/khati/verify', { token: payload.token, amount: payload.amount, purchase_order_id: created._id });
+                  await API.post('/payments/khalti/verify', { token: payload.token, amount: payload.amount, purchase_order_id: created._id });
                   localStorage.removeItem('cart');
                   navigate('/orders', { state: { justPlacedOrderId: created._id } });
                 } catch (err) {
@@ -113,7 +165,7 @@ export default function Payment() {
           console.error('Khalti client flow failed', e && e.message ? e.message : e);
           // Fallback: navigate to orders and inform user
           localStorage.removeItem('cart');
-          alert('Order created but payment flow failed to start. Please check your orders.');
+          alert('Order created but payment flow failed to start. Please check your orders.\nError: ' + (e && e.message ? e.message : String(e)));
           if (created && created._id) navigate('/orders', { state: { justPlacedOrderId: created._id } }); else navigate('/');
           return;
         }
@@ -186,6 +238,12 @@ export default function Payment() {
               </label>
             </div>
           </section>
+
+          {method === 'khalti' && khaltiError && (
+            <div className="card p-12 mb-16" style={{background:'#fff6f6', color:'#7a1b1b'}}>
+              <strong>Khalti unavailable:</strong> {khaltiError}. You can still place the order and complete payment later.
+            </div>
+          )}
 
           {method === 'bank' && (
             <section className="card p-16 mb-16">

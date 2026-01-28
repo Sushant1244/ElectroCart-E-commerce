@@ -12,6 +12,10 @@ export default function Register({ onLogin }){
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const navigate = useNavigate();
+  const [otpPending, setOtpPending] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
   const register = async (e) => {
     e.preventDefault();
@@ -29,12 +33,16 @@ export default function Register({ onLogin }){
         email: (email || '').trim(),
         password: (password || '').trim()
       });
-      const normalizedUser = onLogin(res.data.token, res.data.user);
-      if (normalizedUser?.isAdmin) {
-        navigate('/admin');
-      } else {
-        navigate('/');
+      // If backend returned a token/user (legacy), use it
+      if (res.data && res.data.token && res.data.user) {
+        const normalizedUser = onLogin(res.data.token, res.data.user);
+        if (normalizedUser?.isAdmin) return navigate('/admin');
+        return navigate('/');
       }
+      // Otherwise expect a verification flow: backend sends { message, email }
+      setRegisteredEmail(res.data.email || (email || '').trim());
+      setOtpPending(true);
+      return;
     } catch (err) {
       // Surface server validation messages and network errors to help debugging
       const serverMsg = err?.response?.data?.message;
@@ -52,6 +60,33 @@ export default function Register({ onLogin }){
     }
   };
 
+  const verifyOtp = async (e) => {
+    e && e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) return alert('Enter the 6-digit code sent to your email');
+    try {
+      setVerifying(true);
+      const resp = await API.post('/auth/verify-email', { email: registeredEmail || email, code: otpCode.trim() });
+      // re-login or fetch user again if needed. For now, simply hide OTP panel and navigate home
+      setOtpPending(false);
+      // Attempt to log the user in automatically after successful verification
+      try {
+        const loginResp = await API.post('/auth/login', { email: registeredEmail || email, password });
+        if (loginResp.data && loginResp.data.token && loginResp.data.user) {
+          onLogin(loginResp.data.token, loginResp.data.user);
+        }
+      } catch (loginErr) {
+        // ignore login failure - user can manually login
+      }
+      navigate('/');
+    } catch (err) {
+      const serverMsg = err?.response?.data?.message;
+      if (serverMsg) return alert(serverMsg);
+      alert('Verification failed');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -60,7 +95,8 @@ export default function Register({ onLogin }){
         
   {/* role selector removed: registrations create regular customers by default */}
 
-        <form onSubmit={register} className="auth-form">
+        {!otpPending ? (
+          <form onSubmit={register} className="auth-form">
           <div className="form-group">
             <label>Full Name</label>
             <div className="input-wrapper">
@@ -144,7 +180,28 @@ export default function Register({ onLogin }){
           </div>
 
           <button type="submit" className="btn-auth-primary">Create Account</button>
-        </form>
+          </form>
+        ) : (
+          <form onSubmit={verifyOtp} className="auth-form">
+            <p>Please enter the 6-digit verification code sent to <strong>{registeredEmail || email}</strong></p>
+            <div className="form-group">
+              <label>Verification Code</label>
+              <div className="input-wrapper">
+                <input
+                  type="text"
+                  value={otpCode}
+                  onChange={e => setOtpCode(e.target.value)}
+                  placeholder="123456"
+                  maxLength={6}
+                  required
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <button type="submit" className="btn-auth-primary" disabled={verifying}>{verifying ? 'Verifying...' : 'Verify Email'}</button>
+            </div>
+          </form>
+        )}
 
         <p className="auth-footer">
           Do you have an account? <Link to="/login">Login</Link>

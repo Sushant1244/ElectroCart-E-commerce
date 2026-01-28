@@ -4,10 +4,33 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { createUser: createInMemoryUser, findUserByEmail, setResetTokenForEmail, resetPasswordByHashedToken } = require('../utils/inMemoryAuth');
 const { sendMail } = require('../utils/mailer');
+const pgConfig = require('../config/sequelize');
+const { DataTypes } = require('sequelize');
+
+async function ensureEmailVerificationColumns() {
+  if (!pgConfig || !pgConfig.sequelize) return;
+  try {
+    const qi = pgConfig.sequelize.getQueryInterface();
+    const table = 'users';
+    const desc = await qi.describeTable(table).catch(() => null);
+    if (!desc) return;
+    if (!desc.emailVerified) await qi.addColumn(table, 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
+    if (!desc.emailVerificationToken) await qi.addColumn(table, 'emailVerificationToken', { type: DataTypes.STRING });
+    if (!desc.emailVerificationExpire) await qi.addColumn(table, 'emailVerificationExpire', { type: DataTypes.BIGINT });
+  } catch (e) {
+    console.warn('ensureEmailVerificationColumns failed:', e && e.message ? e.message : e);
+  }
+}
 
 // Use a default secret during local development to avoid crashes when
 // JWT_SECRET isn't defined. In production, always set JWT_SECRET.
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
+
+// Simple in-memory resend tracker for rate-limiting (email => array of timestamps)
+const resendTracker = new Map();
+const RESEND_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RESEND_MAX_PER_WINDOW = 5;
+const RESEND_MIN_INTERVAL_MS = 60 * 1000; // 60s between resends
 
 // helpers to reduce cognitive complexity in login
 async function safeCompare(password, hash) {
@@ -29,41 +52,197 @@ function safeSign(payload) {
 }
 
 exports.register = async (req, res) => {
-  // Check if adapter.User is functional; if not, fall back to in-memory
   const dbAvailable = !!(adapter?.User && typeof adapter.User.findOne === 'function');
-  if (!dbAvailable) {
-    try {
-      const { name, email, password, isAdmin } = req.body;
-      const existing = await findUserByEmail(email);
-      if (existing) return res.status(400).json({ message: 'Email exists' });
-      const user = await createInMemoryUser({ name, email, password, isAdmin });
-      const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ token, user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin } });
-    } catch (e) {
-      return res.status(500).json({ message: e.message });
-    }
-  }
   const { name, email, password, isAdmin } = req.body;
+  if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
   try {
+    if (dbAvailable) {
     const exists = await adapter.User.findOne({ email });
-    if (exists) return res.status(400).json({ message: 'Email exists' });
+      if (exists) return res.status(400).json({ message: 'Email exists' });
 
-    const hashed = await bcrypt.hash(password, 10);
-    // adapter.User.create expects either mongoose User or PG User
-    const createData = { name, email, password: hashed, isAdmin: !!isAdmin };
-    const user = await adapter.User.create(createData);
-  const token = jwt.sign({ id: user._id || user.id }, JWT_SECRET, { expiresIn: '7d' });
-    // send welcome email in background (non-blocking)
-    Promise.resolve(sendMail(
-      user.email,
-      'Welcome to ElectroCart',
-      `Hi ${user.name || ''},\n\nThanks for registering at ElectroCart!`,
-      `<p>Hi ${user.name || ''},</p><p>Thanks for registering at <strong>ElectroCart</strong>!</p>`
-    )).catch((err) => console.error('Welcome email failed:', err && err.message ? err.message : err));
+      const hashed = await bcrypt.hash(password, 10);
+      const createData = { name, email, password: hashed, isAdmin: !!isAdmin };
+      const user = await adapter.User.create(createData);
 
-  res.json({ token, user: { id: user._id || user.id, email: user.email, name: user.name, isAdmin: user.isAdmin } });
+  // Generate secure 6-digit OTP and store hashed token + expiry on user
+  const otpInt = crypto.randomInt(0, 1000000);
+  const otp = String(otpInt).padStart(6, '0');
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+  const expireAt = Date.now() + (10 * 60 * 1000);
+  try {
+        if (adapter.User.findByIdAndUpdate) {
+          // Ensure DB has the needed columns before updating
+          if (pgConfig && pgConfig.sequelize) {
+            try {
+              const qi = pgConfig.sequelize.getQueryInterface();
+              const table = 'users';
+              const desc = await qi.describeTable(table).catch(() => null);
+              if (desc) {
+                if (!desc.emailVerified) await qi.addColumn(table, 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
+                if (!desc.emailVerificationToken) await qi.addColumn(table, 'emailVerificationToken', { type: DataTypes.STRING });
+                if (!desc.emailVerificationExpire) await qi.addColumn(table, 'emailVerificationExpire', { type: DataTypes.BIGINT });
+              }
+            } catch (colErr) {
+              console.warn('Could not ensure email verification columns:', colErr && colErr.message ? colErr.message : colErr);
+            }
+          }
+          const id = user._id || user.id;
+          await adapter.User.findByIdAndUpdate(id, { emailVerificationToken: hashedOtp, emailVerificationExpire: expireAt, emailVerified: false });
+        }
+      } catch (e) {
+        console.error('Failed to store email verification token for user on register:', { email, err: e && (e.stack || e.message) });
+        // Attempt best-effort cleanup: delete the newly created user if adapter supports it
+        try {
+          const id = user._id || user.id;
+          if (adapter.User.findByIdAndDelete) {
+            await adapter.User.findByIdAndDelete(id);
+            console.error('Rolled back created user after token store failure', { id, email });
+            return res.status(500).json({ message: 'Failed to set up email verification. Please try registering again.' });
+          }
+        } catch (delErr) {
+          console.error('Failed to rollback user after token store failure', { email, err: delErr && (delErr.stack || delErr.message) });
+        }
+        // If deletion not supported, return failure so caller can retry instead of proceeding with incomplete setup
+        return res.status(500).json({ message: 'Failed to set up email verification. Please contact support.' });
+      }
+
+      // send OTP
+      try {
+        Promise.resolve(sendMail(
+          email,
+          'Verify your ElectroCart email',
+          `Your verification code is: ${otp}`,
+          `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
+        )).catch((err) => console.error('Verification email failed:', err && err.message ? err.message : err));
+      } catch (mailErr) { console.error('sendMail threw:', mailErr && mailErr.message ? mailErr.message : mailErr); }
+
+      return res.json({ message: 'Verification code sent to email', email: user.email });
+    }
+
+    // Fallback in-memory create
+    const existing = await findUserByEmail(email);
+    if (existing) return res.status(400).json({ message: 'Email exists' });
+    const user = await createInMemoryUser({ name, email, password, isAdmin });
+  const otpInt = crypto.randomInt(0, 1000000);
+  const otp = String(otpInt).padStart(6, '0');
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    const expireAt = Date.now() + (10 * 60 * 1000);
+    try {
+      user.emailVerificationToken = hashedOtp;
+      user.emailVerificationExpire = expireAt;
+      user.emailVerified = false;
+    } catch (e) { /* ignore */ }
+    try {
+      Promise.resolve(sendMail(
+        email,
+        'Verify your ElectroCart email',
+        `Your verification code is: ${otp}`,
+        `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
+      )).catch(() => {});
+    } catch (e) {}
+    return res.json({ message: 'Verification code sent to email', email: user.email });
   } catch (e) {
     res.status(500).json({ message: e.message });
+  }
+};
+
+exports.verifyEmail = async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ message: 'Email and code are required' });
+  try {
+    const hashed = crypto.createHash('sha256').update(code).digest('hex');
+    const dbAvailable = !!(adapter?.User && typeof adapter.User.find === 'function');
+    if (dbAvailable) {
+      const users = await adapter.User.find({ email });
+      const user = Array.isArray(users) ? users.find(u => u.email === email) : users;
+  // Require an expiry timestamp and ensure it's in the future.
+  if (user && user.emailVerificationToken === hashed && (user.emailVerificationExpire && user.emailVerificationExpire > Date.now())) {
+        if (adapter.User.findByIdAndUpdate) {
+          await ensureEmailVerificationColumns();
+          await adapter.User.findByIdAndUpdate(user._id || user.id, { emailVerified: true, emailVerificationToken: null, emailVerificationExpire: null });
+        }
+        return res.json({ message: 'Email verified' });
+      }
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // in-memory user flow
+    const mem = require('../utils/inMemoryAuth');
+    const u = await mem.findUserByEmail(email);
+  if (!u) return res.status(400).json({ message: 'Invalid or expired verification code' });
+  // Require an expiry timestamp and ensure it's in the future.
+  if (u.emailVerificationToken === hashed && (u.emailVerificationExpire && u.emailVerificationExpire > Date.now())) {
+      u.emailVerified = true;
+      u.emailVerificationToken = null;
+      u.emailVerificationExpire = null;
+      return res.json({ message: 'Email verified' });
+    }
+    return res.status(400).json({ message: 'Invalid or expired verification code' });
+  } catch (e) {
+    console.error('verifyEmail error:', e);
+    return res.status(500).json({ message: 'Failed to verify email' });
+  }
+};
+
+// Resend verification endpoint with simple in-memory rate limiting
+exports.resendVerification = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+  try {
+    const now = Date.now();
+    const entry = resendTracker.get(email) || [];
+    const recent = entry.filter(ts => ts > now - RESEND_LIMIT_WINDOW_MS);
+    if (recent.length >= RESEND_MAX_PER_WINDOW) return res.status(429).json({ message: 'Too many resend attempts, try later' });
+    if (recent.length > 0 && now - recent[recent.length - 1] < RESEND_MIN_INTERVAL_MS) return res.status(429).json({ message: 'Please wait before requesting another code' });
+
+    const dbAvailable = !!(adapter?.User && typeof adapter.User.findOne === 'function');
+    let user = null;
+    if (dbAvailable) {
+      user = await adapter.User.findOne({ email });
+      // Do not leak whether the user exists; always return a generic success response
+      if (!user) {
+        // consume rate limiter and return generic response
+        recent.push(now);
+        resendTracker.set(email, recent);
+        return res.json({ message: 'If an account with that email exists, you will receive instructions' });
+      }
+      const otpInt = crypto.randomInt(0, 1000000);
+      const otp = String(otpInt).padStart(6, '0');
+      const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+      const expireAt = Date.now() + (10 * 60 * 1000);
+      if (adapter.User.findByIdAndUpdate) {
+        await ensureEmailVerificationColumns();
+        // Only set emailVerified=false if the user is not already verified
+        const id = user._id || user.id;
+        const updates = { emailVerificationToken: hashedOtp, emailVerificationExpire: expireAt };
+        if (!user.emailVerified) updates.emailVerified = false;
+        await adapter.User.findByIdAndUpdate(id, updates);
+      }
+      try { Promise.resolve(sendMail(email, 'Verify your ElectroCart email', `Your verification code is: ${otp}`, `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`)).catch(() => {}); } catch (e) {}
+    } else {
+      const mem = require('../utils/inMemoryAuth');
+      user = await mem.findUserByEmail(email);
+      if (!user) {
+        recent.push(now);
+        resendTracker.set(email, recent);
+        return res.json({ message: 'If an account with that email exists, you will receive instructions' });
+      }
+      const otpInt = crypto.randomInt(0, 1000000);
+      const otp = String(otpInt).padStart(6, '0');
+      const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+      user.emailVerificationToken = hashedOtp;
+      user.emailVerificationExpire = Date.now() + (10 * 60 * 1000);
+      // do not flip already-verified users to unverified
+      if (!user.emailVerified) user.emailVerified = false;
+      try { Promise.resolve(sendMail(email, 'Verify your ElectroCart email', `Your verification code is: ${otp}`, `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`)).catch(() => {}); } catch (e) {}
+    }
+
+  recent.push(now);
+  resendTracker.set(email, recent);
+  return res.json({ message: 'Verification code resent' });
+  } catch (e) {
+    console.error('resendVerification error:', e);
+    return res.status(500).json({ message: 'Failed to resend verification code' });
   }
 };
 

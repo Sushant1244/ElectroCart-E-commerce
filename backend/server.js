@@ -2,7 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('node:path');
+const { DataTypes } = require('sequelize');
 const app = express();
+
+// Safety check: do not allow ALLOW_UNVERIFIED_ORDERS in production
+if (process.env.NODE_ENV === 'production' && (process.env.ALLOW_UNVERIFIED_ORDERS || '').toLowerCase() === 'true') {
+  console.error('ALERT: ALLOW_UNVERIFIED_ORDERS=true is not permitted in production. Disable this flag and restart.');
+  process.exit(1);
+}
 
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
@@ -47,6 +54,27 @@ if (require.main === module) {
         } catch (e) {
           console.warn('Failed to auto-create `reviews` table (dev helper):', e && e.message ? e.message : e);
         }
+        // Ensure email verification columns exist (safe to run in dev/production)
+        try {
+          const qi = sequelize.getQueryInterface();
+          const usersDesc = await qi.describeTable('users').catch(() => null);
+          if (usersDesc) {
+            if (!usersDesc.emailVerified) {
+              await qi.addColumn('users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
+              console.log('Added column users.emailVerified');
+            }
+            if (!usersDesc.emailVerificationToken) {
+              await qi.addColumn('users', 'emailVerificationToken', { type: DataTypes.STRING });
+              console.log('Added column users.emailVerificationToken');
+            }
+            if (!usersDesc.emailVerificationExpire) {
+              await qi.addColumn('users', 'emailVerificationExpire', { type: DataTypes.BIGINT });
+              console.log('Added column users.emailVerificationExpire');
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to ensure email verification columns:', e && e.message ? e.message : e);
+        }
       } catch (err) {
         console.error('Sequelize connection failed:', err.message || err);
       }
@@ -68,28 +96,34 @@ const PORT = process.env.PORT || 5001;
 // For local debugging you can set DEV_ALLOW_ALL_ORIGINS=true in backend/.env to allow any origin
 if (process.env.NODE_ENV === 'production') {
   app.use(cors({ origin: process.env.CLIENT_URL || 'https://your-production-client.com', credentials: true }));
-} else {
-  if (process.env.DEV_ALLOW_ALL_ORIGINS === 'true') {
-    // Allow all origins for quick local debugging (mirrors request Origin header)
-    app.use(cors({ origin: true, credentials: true }));
   } else {
-    const allowedLocalOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175',
-      'http://localhost:3000',
-      'http://localhost:3001'
-    ];
-    app.use(cors({
-      origin: (origin, cb) => {
-        // Allow requests with no origin like curl or server-to-server
-        if (!origin) return cb(null, true);
-        if (allowedLocalOrigins.includes(origin) || origin.startsWith('http://localhost:')) return cb(null, true);
-        return cb(new Error('Not allowed by CORS'), false);
-      },
-      credentials: true
-    }));
-  }
+    if (process.env.DEV_ALLOW_ALL_ORIGINS === 'true') {
+      // Allow all origins for quick local debugging (mirrors request Origin header)
+      app.use(cors({ origin: true, credentials: true }));
+    } else {
+      const allowedLocalOrigins = [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://localhost:3000',
+        'http://localhost:3001'
+      ];
+      app.use(cors({
+        origin: (origin, cb) => {
+          // Allow requests with no origin like curl or server-to-server
+          if (!origin) return cb(null, true);
+          // Allow explicit allowedLocalOrigins, any localhost:port and 127.0.0.1:port, and IPv6 loopback
+          if (
+            allowedLocalOrigins.includes(origin) ||
+            origin.startsWith('http://localhost:') ||
+            origin.startsWith('http://127.0.0.1:') ||
+            origin.startsWith('http://[::1]:')
+          ) return cb(null, true);
+          return cb(new Error('Not allowed by CORS'), false);
+        },
+        credentials: true
+      }));
+    }
 }
 
 // Parse JSON and URL-encoded payloads
@@ -169,4 +203,35 @@ if (require.main === module) {
   startServer();
 } else {
   module.exports = { app, startServer };
+}
+
+// Background jobs: notification cleanup
+// Only schedule background timers when the server is started directly (not imported by tests)
+if (require.main === module && process.env.NODE_ENV !== 'test') {
+  try {
+    const NOTIF_CLEANUP_ENABLED = (process.env.NOTIF_CLEANUP_ENABLED || 'true') === 'true';
+    const NOTIF_CLEANUP_INTERVAL_HOURS = Number(process.env.NOTIF_CLEANUP_INTERVAL_HOURS || 6);
+    const NOTIF_CLEANUP_OLDER_THAN_DAYS = Number(process.env.NOTIF_CLEANUP_OLDER_THAN_DAYS || 30);
+    const NOTIF_CLEANUP_READ_DAYS = Number(process.env.NOTIF_CLEANUP_READ_DAYS || 7);
+    if (NOTIF_CLEANUP_ENABLED) {
+      const runCleanup = async () => {
+        try {
+          const adapter = require('./models/adapter');
+          if (adapter && adapter.Notification && typeof adapter.Notification.deleteOlderThan === 'function') {
+            const deleted = await adapter.Notification.deleteOlderThan({ olderThanDays: NOTIF_CLEANUP_OLDER_THAN_DAYS, readOlderThanDays: NOTIF_CLEANUP_READ_DAYS });
+            console.log(`[notif-cleanup] deleted ${deleted} old notifications`);
+          }
+        } catch (e) {
+          console.warn('[notif-cleanup] failed', e && e.message ? e.message : e);
+        }
+      };
+      // Run once on startup (non-blocking)
+      setTimeout(() => { runCleanup().catch(() => {}); }, 2000);
+      // Schedule periodic cleanup
+      setInterval(() => { runCleanup().catch(() => {}); }, Math.max(1, NOTIF_CLEANUP_INTERVAL_HOURS) * 60 * 60 * 1000);
+      console.log('[notif-cleanup] scheduled every', NOTIF_CLEANUP_INTERVAL_HOURS, 'hours');
+    }
+  } catch (e) { console.warn('Failed to schedule notification cleanup', e && e.message ? e.message : e); }
+} else {
+  console.log('[notif-cleanup] not scheduled (server imported or test env)');
 }

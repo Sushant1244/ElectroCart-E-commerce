@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest"
   },
   "dependencies": {
     "axios": "^1.4.0",
@@ -19,7 +20,16 @@
     "recharts": "^3.5.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^5.0.0"
+    "jsdom": "^20.0.3",
+    "vite": "^5.0.0",
+    "vitest": "^4.0.18"
+  },
+  "vitest": {
+    "environment": "jsdom",
+    "globals": true,
+    "setupFiles": "./src/setupTests.js"
   }
 }

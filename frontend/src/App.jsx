@@ -16,6 +16,7 @@ import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 // AdminWelcome removed; consolidate to single public welcome page at /welcome
 import UserWelcome from './pages/UserWelcome';
+import VerifyEmail from './pages/VerifyEmail';
 import Orders from './pages/Orders';
 import Wishlist from './pages/Wishlist';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -68,6 +69,11 @@ function App(){
     setUser(null);
   };
 
+  const requireVerified = (component) => {
+    if (user && user.emailVerified === false) return <Navigate to="/verify-email" />;
+    return component;
+  };
+
   return (
     <div className="app">
       <Header user={user} onLogout={onLogout}/>
@@ -86,15 +92,16 @@ function App(){
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/admin" element={ user?.isAdmin ? <AdminDashboard /> : <Navigate to="/login" /> } />
+          <Route path="/admin" element={ user?.isAdmin ? requireVerified(<AdminDashboard />) : <Navigate to="/login" /> } />
           {/* admin welcome route removed to keep a single /welcome page */}
           <Route path="/welcome" element={<UserWelcome />} />
-          <Route path="/admin/add" element={ user?.isAdmin ? <AdminAddProduct /> : <Navigate to="/login" /> } />
-          <Route path="/admin/edit/:id" element={ user?.isAdmin ? <AdminEditProduct /> : <Navigate to="/login" /> } />
-          <Route path="/admin/orders" element={ user?.isAdmin ? <AdminOrders /> : <Navigate to="/login" /> } />
-          <Route path="/admin/create-order" element={ user?.isAdmin ? <AdminCreateOrder /> : <Navigate to="/login" /> } />
-          <Route path="/orders" element={ <Orders /> } />
-          <Route path="/wishlist" element={ <ErrorBoundary><Wishlist /></ErrorBoundary> } />
+          <Route path="/admin/add" element={ user?.isAdmin ? requireVerified(<AdminAddProduct />) : <Navigate to="/login" /> } />
+          <Route path="/admin/edit/:id" element={ user?.isAdmin ? requireVerified(<AdminEditProduct />) : <Navigate to="/login" /> } />
+          <Route path="/admin/orders" element={ user?.isAdmin ? requireVerified(<AdminOrders />) : <Navigate to="/login" /> } />
+          <Route path="/admin/create-order" element={ user?.isAdmin ? requireVerified(<AdminCreateOrder />) : <Navigate to="/login" /> } />
+          <Route path="/orders" element={ requireVerified(<Orders />) } />
+          <Route path="/wishlist" element={ requireVerified(<ErrorBoundary><Wishlist /></ErrorBoundary>) } />
+          <Route path="/verify-email" element={<VerifyEmail user={user} onVerified={(u) => { setUser(u); localStorage.setItem('user', JSON.stringify(u)); }} />} />
           <Route path="/contact" element={<div className="container"><h1>Contact Us</h1><p>Email: info@elecrocart.com | Phone: +1234567890</p></div>} />
         </Routes>
       </main>

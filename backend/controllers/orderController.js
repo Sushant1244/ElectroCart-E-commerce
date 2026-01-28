@@ -4,6 +4,17 @@ const { orderPlacedHtml, orderStatusHtml } = require('../utils/emailTemplates');
 const fs = require('fs');
 const path = require('path');
 
+// small helper to escape text for HTML contexts
+function escapeHtml(str) {
+  if (!str && str !== 0) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function auditAdminOrderAttempt(info) {
   try {
     const logsDir = path.join(__dirname, '..', 'logs');
@@ -60,27 +71,44 @@ exports.createOrder = async (req, res) => {
     // that the payment was verified, but allow creating a pending Khalti order (so client can
     // initiate/verify payment after order creation) when no token/result is provided.
     const isCod = paymentMethod && String(paymentMethod).toLowerCase() === 'cod';
-    const isKhalti = paymentMethod && ['khalti','khati'].includes(String(paymentMethod).toLowerCase());
+  const isKhalti = paymentMethod && ['khalti'].includes(String(paymentMethod).toLowerCase());
     const paymentResult = req.body.paymentResult || null;
 
     if (!isCod && !isKhalti) {
       // For non-COD, non-Khalti methods require an explicit successful paymentResult
+      // Dev convenience: allow creating unverified orders when `ALLOW_UNVERIFIED_ORDERS=true` is set
+      const allowUnverified = (process.env.ALLOW_UNVERIFIED_ORDERS || 'false') === 'true';
+      const isProduction = (process.env.NODE_ENV === 'production');
       if (!paymentResult || paymentResult.success !== true) {
-        // handle failed payment notification/email then reject
-        try {
-          const failedMsg = (paymentResult && paymentResult.message) ? String(paymentResult.message) : 'Payment failed or not verified';
-          const targetUserId = (req.user && (req.user._id || req.user.id)) || bodyUserId || null;
-          try { await adapter.Notification.create({ userId: targetUserId, title: 'Payment failed', body: `Payment failed: ${failedMsg}`, meta: { paymentResult } }); } catch (e) { console.error('Failed to create payment-failed notification', e && e.message ? e.message : e); }
-          const email = (paymentResult && paymentResult.email) || (req.user && req.user.email) || null;
-          if (email) {
+        if (allowUnverified && !isProduction) {
+          // proceed and create order in unpaid state for development/testing
+          console.log('ALLOW_UNVERIFIED_ORDERS is true — creating order in unpaid state for dev/testing');
+        } else if (allowUnverified && isProduction) {
+          console.error('Attempted to enable ALLOW_UNVERIFIED_ORDERS in production - refusing to bypass payment verification');
+          return res.status(400).json({ message: 'Unverified orders are not allowed in production' });
+        } else {
+          // handle failed payment notification/email then reject
+          try {
+            const failedMsg = (paymentResult && paymentResult.message) ? String(paymentResult.message) : 'Payment failed or not verified';
+            const targetUserId = (req.user && (req.user._id || req.user.id)) || bodyUserId || null;
             try {
-              const { wrapHtml } = require('../utils/emailTemplates');
-              const html = wrapHtml('Payment failed', `<p>We could not process your payment. Reason: ${failedMsg}</p><p>If you were charged, contact support.</p>`);
-              Promise.resolve(sendMail(email, 'Payment failed for your order', `Payment failed: ${failedMsg}`, html)).catch(() => {});
-            } catch (e) { console.error('Failed to send payment-failed email', e && e.message ? e.message : e); }
-          }
-        } catch (e) { console.error('Error handling failed payment notification', e && e.message ? e.message : e); }
-        return res.status(400).json({ message: 'Payment not verified. Order not created' });
+              const safe = escapeHtml(failedMsg);
+              await adapter.Notification.create({ userId: targetUserId, title: 'Payment failed', body: `Payment failed: ${safe}`, meta: { paymentResult } });
+            } catch (e) { console.error('Failed to create payment-failed notification', e && e.message ? e.message : e); }
+            const email = (paymentResult && paymentResult.email) || (req.user && req.user.email) || null;
+            if (email) {
+              try {
+                const { wrapHtml } = require('../utils/emailTemplates');
+                const escaped = escapeHtml(failedMsg);
+                const html = wrapHtml('Payment failed', `<p>We could not process your payment. Reason: ${escaped}</p><p>If you were charged, contact support.</p>`);
+                // Use escaped text in both plain-text and HTML contexts
+                const safeText = `Payment failed: ${escapeHtml(failedMsg)}`;
+                Promise.resolve(sendMail(email, 'Payment failed for your order', safeText, html)).catch(() => {});
+              } catch (e) { console.error('Failed to send payment-failed email', e && e.message ? e.message : e); }
+            }
+          } catch (e) { console.error('Error handling failed payment notification', e && e.message ? e.message : e); }
+          return res.status(400).json({ message: 'Payment not verified. Order not created' });
+        }
       }
     }
 
@@ -111,7 +139,7 @@ exports.createOrder = async (req, res) => {
           return res.status(400).json({ message: 'Khalti payment verification failed', detail: e && (e.response?.data || e.message) });
         }
       }
-      // if no token provided, proceed and create order as unpaid/pending; client will call /api/payments/khati/initiate or /verify later
+  // if no token provided, proceed and create order as unpaid/pending; client will call /api/payments/khalti/initiate or /verify later
     }
 
     const nowIso = new Date().toISOString();
