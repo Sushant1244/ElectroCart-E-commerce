@@ -220,4 +220,72 @@ router.get('/khalti/config', (req, res) => {
 
 module.exports = router;
 
+// eSewa verification endpoint
+// Expects { token, amount, orderId } in body. If ESEWA_SECRET or ESEWA_VERIFY_URL
+// are set in env, the server will call the real eSewa API. In development, if not
+// configured, returns a mocked success for convenience.
+router.post('/esewa/verify', async (req, res) => {
+  try {
+    const { token, amount, orderId } = req.body || {};
+    if (!token || !amount || !orderId) return res.status(400).json({ message: 'token, amount and orderId are required' });
+
+    const ESEWA_VERIFY_URL = process.env.ESEWA_VERIFY_URL || null;
+    const ESEWA_SECRET = process.env.ESEWA_SECRET || null;
+    if (!ESEWA_VERIFY_URL || !ESEWA_SECRET) {
+      // Dev fallback: accept any token when not configured
+      console.log('[esewa] dev-verify: no ESEWA_VERIFY_URL configured — accepting token in dev');
+      try {
+        const adapter = require('../models/adapter');
+        if (adapter && adapter.Order && typeof adapter.Order.findByIdAndUpdate === 'function') {
+          await adapter.Order.findByIdAndUpdate(orderId, { isPaid: true, paidAt: new Date(), paymentResult: { provider: 'esewa', token, amount } });
+        }
+      } catch (e) { console.warn('[esewa] failed to update order in dev-verify', e && e.message ? e.message : e); }
+      return res.json({ ok: true, provider: 'esewa', debug: true });
+    }
+
+    // Call real eSewa verify endpoint (provider-specific). We'll POST JSON by default.
+    try {
+      const resp = await axios.post(ESEWA_VERIFY_URL, { token, amount, secret: ESEWA_SECRET }, { timeout: 10000 });
+      if (!resp || resp.status >= 400) return res.status(resp?.status || 502).json({ message: 'eSewa verification failed', body: resp?.data });
+      // update order
+      try {
+        const adapter = require('../models/adapter');
+        if (adapter && adapter.Order && typeof adapter.Order.findByIdAndUpdate === 'function') {
+          await adapter.Order.findByIdAndUpdate(orderId, { isPaid: true, paidAt: new Date(), paymentResult: { provider: 'esewa', token, amount, raw: resp.data } });
+        }
+      } catch (e) { console.warn('[esewa] failed to update order after verify', e && e.message ? e.message : e); }
+      return res.json({ ok: true, body: resp.data });
+    } catch (e) {
+      console.error('eSewa verify failed', e && (e.response?.data || e.message || e));
+      return res.status(500).json({ message: 'eSewa verify failed', detail: e && (e.response?.data || e.message || e) });
+    }
+  } catch (e) {
+    console.error('eSewa verify handler failed', e && e.message ? e.message : e);
+    return res.status(500).json({ message: 'eSewa verify handler failed' });
+  }
+});
+
+// Bank transfer webhook — provider should POST { orderId, status, details }
+router.post('/bank/webhook', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const orderId = body.orderId || body.order_id || body.reference || null;
+    const status = (body.status || '').toString().toLowerCase() || null;
+    if (!orderId) return res.status(400).json({ message: 'orderId required' });
+
+    // Interpret status values like 'confirmed','paid','success' as successful
+    const paid = ['paid', 'confirmed', 'success'].includes(status);
+    try {
+      const adapter = require('../models/adapter');
+      if (adapter && adapter.Order && typeof adapter.Order.findByIdAndUpdate === 'function') {
+        await adapter.Order.findByIdAndUpdate(orderId, { isPaid: paid, paidAt: paid ? new Date() : null, paymentResult: { provider: 'bank', status: body.status || body.state || null, details: body } });
+      }
+    } catch (e) { console.warn('bank webhook: failed to update order', e && e.message ? e.message : e); }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('bank webhook handler failed', e && e.message ? e.message : e);
+    return res.status(500).json({ message: 'bank webhook handler failed' });
+  }
+});
+
 
