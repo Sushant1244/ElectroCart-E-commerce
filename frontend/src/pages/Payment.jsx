@@ -22,17 +22,19 @@ export default function Payment() {
             const cfg = await API.get('/payments/khalti/config');
             publicKey = cfg?.data?.publicKey || null;
           } catch (e) {
-            // backend config fetch failed via proxy; try direct backend URL as a fallback
+            // If proxy call failed, try again using the configured API URL or the current origin.
+            // Use the app's API client (axios) with an absolute URL so authentication headers are preserved.
             try {
-              const direct = await fetch((import.meta.env.DEV ? 'http://127.0.0.1:5001' : (import.meta.env.VITE_API_URL || 'http://localhost:5001')) + '/api/payments/khalti/config', { method: 'GET' });
-              if (direct && direct.ok) {
-                const data = await direct.json();
-                publicKey = data?.publicKey || null;
-              } else {
-                throw new Error('Direct backend fetch failed');
-              }
+              let base = import.meta.env.VITE_API_URL || window.location.origin;
+              // normalize base: remove trailing '/api' or trailing slash to avoid double '/api'
+              try {
+                // strip trailing '/api' or '/api/'
+                base = base.replace(/\/api\/?$/i, '').replace(/\/$/, '');
+              } catch (normErr) { /* ignore */ }
+              const cfg2 = await API.get(base + '/api/payments/khalti/config');
+              publicKey = cfg2?.data?.publicKey || null;
             } catch (e2) {
-              if (mounted) setKhaltiError('Failed to fetch Khalti config (proxy and direct fetch failed)');
+              if (mounted) setKhaltiError('Failed to fetch Khalti config (proxy and direct fetch via API failed)');
             }
           }
         }
@@ -174,11 +176,16 @@ export default function Payment() {
       // Non-Khalti flows: clear cart and navigate to orders
       localStorage.removeItem('cart');
       if (created && created._id) {
+        // For eSewa and Bank transfer show pending payment instructions
+        if (method === 'esewa') {
+          alert('Order created and pending payment via eSewa. Complete payment in eSewa using your order ID and then call Verify on the Orders page.');
+        } else if (method === 'bank') {
+          alert('Order created and pending bank transfer. Use the provided bank details and upload proof once transfer is done.');
+        }
         navigate('/orders', { state: { justPlacedOrderId: created._id } });
       } else {
         navigate('/');
       }
-      alert('Order placed successfully');
     } catch (err) {
       console.error('Place order failed', err);
       // Network error (server not reachable) often shows err.message like 'Network Error' or errno ECONNREFUSED

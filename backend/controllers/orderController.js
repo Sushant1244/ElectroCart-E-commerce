@@ -15,6 +15,8 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+const { pickEmail } = require('../utils/emailHelpers');
+
 function auditAdminOrderAttempt(info) {
   try {
     const logsDir = path.join(__dirname, '..', 'logs');
@@ -71,7 +73,8 @@ exports.createOrder = async (req, res) => {
     // that the payment was verified, but allow creating a pending Khalti order (so client can
     // initiate/verify payment after order creation) when no token/result is provided.
     const isCod = paymentMethod && String(paymentMethod).toLowerCase() === 'cod';
-  const isKhalti = paymentMethod && ['khalti'].includes(String(paymentMethod).toLowerCase());
+  const method = paymentMethod ? String(paymentMethod).toLowerCase() : '';
+  const isKhalti = method === 'khalti';
     const paymentResult = req.body.paymentResult || null;
 
     if (!isCod && !isKhalti) {
@@ -95,7 +98,7 @@ exports.createOrder = async (req, res) => {
               const safe = escapeHtml(failedMsg);
               await adapter.Notification.create({ userId: targetUserId, title: 'Payment failed', body: `Payment failed: ${safe}`, meta: { paymentResult } });
             } catch (e) { console.error('Failed to create payment-failed notification', e && e.message ? e.message : e); }
-            const email = (paymentResult && paymentResult.email) || (req.user && req.user.email) || null;
+            const email = pickEmail(paymentResult && paymentResult.email, req.user && req.user.email);
             if (email) {
               try {
                 const { wrapHtml } = require('../utils/emailTemplates');
@@ -166,8 +169,8 @@ exports.createOrder = async (req, res) => {
     try {
       const notif = await adapter.Notification.create({ userId: userId || null, title: 'Order placed', body: `Your order ${order.id || order._id} has been placed successfully.`, meta: { orderId: order.id || order._id } });
       // determine recipient email: prefer order.email, otherwise use authenticated user's email
-      const recipientEmail = (order && (order.email || order.emailAddress)) || (req.user && req.user.email) || null;
-      if (recipientEmail) {
+  const recipientEmail = pickEmail(order && (order.email || order.emailAddress), req.user && req.user.email);
+  if (recipientEmail) {
         try {
           const html = orderPlacedHtml({ order, clientUrl: process.env.CLIENT_URL || '' });
           // send asynchronously but don't block order creation response
@@ -241,12 +244,22 @@ exports.updateOrderStatus = async (req, res) => {
     // notify user about delivery/status update and email
     try {
       await adapter.Notification.create({ userId: updated.userId || null, title: `Order ${updated.id || updated._id} update`, body: `Order status updated: ${updated.status || updated.deliveryStatus}`, meta: { orderId: updated.id || updated._id } });
-      if (updated.email) {
+    // determine recipient: prefer order email/address, otherwise look up the order owner or fall back to the authenticated user
+    let to = pickEmail(updated && (updated.email || updated.emailAddress));
+    if (!to && updated && updated.userId) {
+      try {
+        const owner = await adapter.User.findById(updated.userId);
+        to = pickEmail(owner && owner.email) || pickEmail(req.user && req.user.email);
+      } catch (e) {
+        to = pickEmail(req.user && req.user.email);
+      }
+    }
+    if (to) {
         try {
           const html = orderStatusHtml({ order: updated, clientUrl: process.env.CLIENT_URL || '' });
-          Promise.resolve(sendMail(updated.email, `Update for order ${updated.id || updated._id}`, `Status: ${updated.status || updated.deliveryStatus}`, html)).catch(() => {});
+      Promise.resolve(sendMail(to, `Update for order ${updated.id || updated._id}`, `Status: ${updated.status || updated.deliveryStatus}`, html)).catch(() => {});
         } catch (e) { console.error('Failed to generate/send orderStatus email', e); }
-      }
+    }
     } catch (e) { console.error('Notification/email after updateOrderStatus failed', e && e.message ? e.message : e); }
     return res.json(updated);
   } catch (e) {
@@ -288,11 +301,21 @@ exports.cancelOrder = async (req, res) => {
     // notify user and send email
     try {
       await adapter.Notification.create({ userId: updated.userId || null, title: `Order ${updated.id || updated._id} cancelled`, body: 'Your order has been cancelled.', meta: { orderId: updated.id || updated._id } });
-      if (updated.email) {
+      // Determine cancel email. Prefer order email, otherwise use owner or cancelling user's email
+      let toCancel = pickEmail(updated && (updated.email || updated.emailAddress));
+      if (!toCancel && updated && updated.userId) {
+        try {
+          const owner = await adapter.User.findById(updated.userId);
+          toCancel = pickEmail(owner && owner.email) || pickEmail(req.user && req.user.email);
+        } catch (e) {
+          toCancel = pickEmail(req.user && req.user.email);
+        }
+      }
+      if (toCancel) {
         const { wrapHtml } = require('../utils/emailTemplates');
         const { sendMail } = require('../utils/mailer');
         const html = wrapHtml('Order cancelled', `<p>Your order <strong>${updated.id || updated._id}</strong> has been cancelled. If this was a mistake, contact support.</p>`);
-        Promise.resolve(sendMail(updated.email, `Order ${updated.id || updated._id} cancelled`, `Order cancelled`, html)).catch(() => {});
+        Promise.resolve(sendMail(toCancel, `Order ${updated.id || updated._id} cancelled`, `Order cancelled`, html)).catch(() => {});
       }
     } catch (e) { console.error('Failed to notify on cancel', e && e.message ? e.message : e); }
 
@@ -315,5 +338,40 @@ exports.getOrderTracking = async (req, res) => {
     res.json(order);
   } catch (e) {
     res.status(500).json({ message: e.message });
+  }
+};
+
+// Upload proof for bank transfer (or other manual payment proofs). Authenticated users only.
+exports.uploadProof = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const order = await adapter.Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    // Only owner or admin can upload proof
+    const isOwner = req.user && (String(req.user._id || req.user.id) === String(order.userId));
+    if (!isOwner && !req.user?.isAdmin) return res.status(403).json({ message: 'Not authorized' });
+
+    if (!req.file) return res.status(400).json({ message: 'No proof file uploaded' });
+    // store proof path in order.paymentProofs array (append)
+    const filename = `/uploads/${req.file.filename}`;
+    const existing = Array.isArray(order.paymentProofs) ? order.paymentProofs.slice() : [];
+    existing.push({ path: filename, uploadedAt: new Date(), uploadedBy: req.user && (req.user.email || req.user._id || req.user.id) });
+    const updates = { paymentProofs: existing };
+    // If admin uploads and indicates success via query param ?markPaid=true, mark order paid
+    if (req.query && String(req.query.markPaid) === 'true' && req.user?.isAdmin) {
+      updates.isPaid = true;
+      updates.paidAt = new Date();
+      // Preserve existing paymentResult fields from the stored order and merge admin-marking info
+      updates.paymentResult = Object.assign({}, order.paymentResult || {}, { provider: 'bank', adminMarked: true });
+    }
+    const updated = await adapter.Order.findByIdAndUpdate(id, updates);
+    // create notification for user
+    try {
+      await adapter.Notification.create({ userId: updated.userId || null, title: 'Payment proof uploaded', body: 'A payment proof was uploaded for your order. Our team will review it shortly.', meta: { orderId: updated.id || updated._id } });
+    } catch (e) { console.warn('Failed to create notification for proof upload', e && e.message ? e.message : e); }
+    return res.json({ ok: true, uploaded: filename, order: updated });
+  } catch (e) {
+    console.error('uploadProof failed', e && e.message ? e.message : e);
+    return res.status(500).json({ message: 'uploadProof failed' });
   }
 };
