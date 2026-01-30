@@ -210,9 +210,26 @@ if (require.main === module) {
 if (require.main === module && process.env.NODE_ENV !== 'test') {
   try {
     const NOTIF_CLEANUP_ENABLED = (process.env.NOTIF_CLEANUP_ENABLED || 'true') === 'true';
-    const NOTIF_CLEANUP_INTERVAL_HOURS = Number(process.env.NOTIF_CLEANUP_INTERVAL_HOURS || 6);
-    const NOTIF_CLEANUP_OLDER_THAN_DAYS = Number(process.env.NOTIF_CLEANUP_OLDER_THAN_DAYS || 30);
-    const NOTIF_CLEANUP_READ_DAYS = Number(process.env.NOTIF_CLEANUP_READ_DAYS || 7);
+    // Parse numeric env vars and validate/fallbacks to safe defaults if invalid
+    let NOTIF_CLEANUP_INTERVAL_HOURS = Number(process.env.NOTIF_CLEANUP_INTERVAL_HOURS || 6);
+    if (!Number.isFinite(NOTIF_CLEANUP_INTERVAL_HOURS) || Number.isNaN(NOTIF_CLEANUP_INTERVAL_HOURS) || NOTIF_CLEANUP_INTERVAL_HOURS < 1) {
+      console.warn('[notif-cleanup] NOTIF_CLEANUP_INTERVAL_HOURS is invalid; falling back to 6');
+      NOTIF_CLEANUP_INTERVAL_HOURS = 6;
+    }
+    // Ensure integer hours and clamp to minimum 1 when used for scheduling
+    NOTIF_CLEANUP_INTERVAL_HOURS = Math.max(1, Math.floor(NOTIF_CLEANUP_INTERVAL_HOURS));
+
+    let NOTIF_CLEANUP_OLDER_THAN_DAYS = Number(process.env.NOTIF_CLEANUP_OLDER_THAN_DAYS || 30);
+    if (!Number.isFinite(NOTIF_CLEANUP_OLDER_THAN_DAYS) || Number.isNaN(NOTIF_CLEANUP_OLDER_THAN_DAYS) || NOTIF_CLEANUP_OLDER_THAN_DAYS < 0) {
+      console.warn('[notif-cleanup] NOTIF_CLEANUP_OLDER_THAN_DAYS is invalid; falling back to 30');
+      NOTIF_CLEANUP_OLDER_THAN_DAYS = 30;
+    }
+
+    let NOTIF_CLEANUP_READ_DAYS = Number(process.env.NOTIF_CLEANUP_READ_DAYS || 7);
+    if (!Number.isFinite(NOTIF_CLEANUP_READ_DAYS) || Number.isNaN(NOTIF_CLEANUP_READ_DAYS) || NOTIF_CLEANUP_READ_DAYS < 0) {
+      console.warn('[notif-cleanup] NOTIF_CLEANUP_READ_DAYS is invalid; falling back to 7');
+      NOTIF_CLEANUP_READ_DAYS = 7;
+    }
     if (NOTIF_CLEANUP_ENABLED) {
       const runCleanup = async () => {
         try {
@@ -233,5 +250,7 @@ if (require.main === module && process.env.NODE_ENV !== 'test') {
     }
   } catch (e) { console.warn('Failed to schedule notification cleanup', e && e.message ? e.message : e); }
 } else {
-  console.log('[notif-cleanup] not scheduled (server imported or test env)');
+  // When imported (for tests) or running under test env, do not start background timers.
+  // Keep the log minimal so tests aren't noisy.
+  if (process.env.NODE_ENV !== 'test') console.log('[notif-cleanup] not scheduled (server imported)');
 }
