@@ -7,8 +7,17 @@
 require('dotenv').config();
 (async () => {
   try {
-    const olderThanDays = Number(process.env.NOTIF_CLEANUP_OLDER_THAN_DAYS || 30);
-    const readOlderThanDays = Number(process.env.NOTIF_CLEANUP_READ_DAYS || 7);
+    let olderThanDays = Number(process.env.NOTIF_CLEANUP_OLDER_THAN_DAYS || 30);
+    let readOlderThanDays = Number(process.env.NOTIF_CLEANUP_READ_DAYS || 7);
+    // Validate parsed numeric env vars and fallback to safe defaults when invalid
+    if (!Number.isFinite(olderThanDays) || Number.isNaN(olderThanDays)) {
+      console.warn('[migration] NOTIF_CLEANUP_OLDER_THAN_DAYS is invalid; falling back to 30');
+      olderThanDays = 30;
+    }
+    if (!Number.isFinite(readOlderThanDays) || Number.isNaN(readOlderThanDays)) {
+      console.warn('[migration] NOTIF_CLEANUP_READ_DAYS is invalid; falling back to 7');
+      readOlderThanDays = 7;
+    }
     console.log('[migration] starting cleanup_old_notifications_migration with', { olderThanDays, readOlderThanDays });
     const adapter = require('../models/adapter');
     if (!adapter || !adapter.Notification || typeof adapter.Notification.deleteOlderThan !== 'function') {

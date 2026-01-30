@@ -70,6 +70,9 @@ function App(){
   };
 
   const requireVerified = (component) => {
+    // If not authenticated, redirect to login first
+    if (!user) return <Navigate to="/login" />;
+    // If authenticated but email not verified, redirect to verify-email
     if (user && user.emailVerified === false) return <Navigate to="/verify-email" />;
     return component;
   };

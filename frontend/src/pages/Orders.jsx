@@ -109,6 +109,49 @@ export default function Orders() {
               </div>
               <div style={{marginTop:12}}>
                 <button className="btn" onClick={() => loadTracking(o._id)}>Track delivery</button>
+                {/* For bank transfer: allow user to upload proof */}
+                {String((o.paymentMethod || o.method || '')).toLowerCase() === 'bank' && (
+                  <>
+                    <label style={{marginLeft:8}} className="btn">
+                      Upload proof
+                      <input type="file" style={{display:'none'}} onChange={async (e) => {
+                        const file = e.target.files && e.target.files[0];
+                        if (!file) return;
+                        if (!confirm('Upload this file as payment proof for the order?')) return;
+                        const fd = new FormData(); fd.append('proof', file);
+                        try {
+                          const res = await API.post(`/orders/${o._id}/proof`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                          alert('Proof uploaded successfully');
+                          await loadOrders();
+                        } catch (err) {
+                          console.error('Upload proof failed', err);
+                          alert(err?.response?.data?.message || 'Failed to upload proof');
+                        }
+                      }} />
+                    </label>
+                  </>
+                )}
+                {/* For eSewa: allow pasting token to verify */}
+                {String((o.paymentMethod || o.method || '')).toLowerCase() === 'esewa' && (
+                  <button className="btn" style={{marginLeft:8}} onClick={async () => {
+                    const token = prompt('Paste eSewa payment token/transaction id here to verify:');
+                    if (!token) return;
+                    try {
+                      // amount: use order total if available
+                      const amount = o.totalPrice || o.total || 0;
+                      const res = await API.post('/payments/esewa/verify', { token, amount, orderId: o._id });
+                      if (res && res.data && res.data.ok) {
+                        alert('eSewa payment verified successfully');
+                        await loadOrders();
+                      } else {
+                        alert('Verification response: ' + JSON.stringify(res.data || res));
+                      }
+                    } catch (err) {
+                      console.error('eSewa verify failed', err);
+                      alert(err?.response?.data?.message || 'Failed to verify eSewa payment');
+                    }
+                  }}>Verify eSewa payment</button>
+                )}
                 {/* Cancel order button: only show when order can be cancelled client-side */}
                 {['processing','pending'].includes((o.status||'').toLowerCase()) && (
                   <button

@@ -8,7 +8,21 @@ export default function VerifyEmail({ user, onVerified }) {
   const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
 
-  const email = user?.email || localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || '{}').email : '';
+  // Safely read stored user email from localStorage. JSON.parse can throw if the value is 'null' or malformed,
+  // which previously caused the page to crash and other sections (e.g. blog) to not render.
+  let storedEmail = '';
+  try {
+    const raw = localStorage.getItem('user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      storedEmail = parsed && parsed.email ? parsed.email : '';
+    }
+  } catch (e) {
+    // ignore parse errors and fallback to empty email
+    storedEmail = '';
+  }
+
+  const email = user?.email || storedEmail || '';
 
   const submit = async (e) => {
     e.preventDefault();

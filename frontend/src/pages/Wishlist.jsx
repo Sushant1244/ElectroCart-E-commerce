@@ -21,15 +21,18 @@ export default function Wishlist() {
       setItems(merged);
 
       // fetch each product in background and merge results as they arrive
+      // To avoid N requests for missing items, fetch the full products list once and reuse it as a cache.
+      let productsPromise = null;
       ids.forEach(async (id) => {
         try {
           // try direct lookup by slug or id
           let res = null;
           try { res = await API.get(`/products/${encodeURIComponent(id)}`).then(r => r.data).catch(() => null); } catch (e) { res = null; }
           if (!res) {
-            // fallback: fetch all products and try to match by _id, id, or slug
+            // fallback: fetch all products once and try to match by _id, id, or slug
             try {
-              const list = await API.get('/products').then(r => r.data).catch(() => null);
+              if (!productsPromise) productsPromise = API.get('/products').then(r => r.data).catch(() => null);
+              const list = await productsPromise;
               if (Array.isArray(list)) {
                 const found = list.find(p => String(p._id) === String(id) || String(p.id) === String(id) || String(p.slug) === String(id));
                 if (found) res = found;

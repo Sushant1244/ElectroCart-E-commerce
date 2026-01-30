@@ -70,7 +70,7 @@ export default function Register({ onLogin }){
       setOtpPending(false);
       // Attempt to log the user in automatically after successful verification
       try {
-        const loginResp = await API.post('/auth/login', { email: registeredEmail || email, password });
+        const loginResp = await API.post('/auth/login', { email: registeredEmail || email, password: (password || '').trim() });
         if (loginResp.data && loginResp.data.token && loginResp.data.user) {
           onLogin(loginResp.data.token, loginResp.data.user);
         }

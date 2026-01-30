@@ -2,8 +2,6 @@ import axios from 'axios';
 
 // Use Vite proxy in development (relative '/api') to avoid CORS and origin issues.
 // In production use the configured VITE_API_URL or fallback to localhost.
-// Use Vite proxy in development (relative '/api') to avoid CORS and origin issues.
-// In production use the configured VITE_API_URL or fallback to localhost.
 const baseURL = import.meta.env.DEV
   ? '/api'
   : ((import.meta.env.VITE_API_URL || 'http://localhost:5001') + '/api');
