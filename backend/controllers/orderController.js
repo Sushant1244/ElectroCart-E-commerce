@@ -352,10 +352,29 @@ exports.uploadProof = async (req, res) => {
     if (!isOwner && !req.user?.isAdmin) return res.status(403).json({ message: 'Not authorized' });
 
     if (!req.file) return res.status(400).json({ message: 'No proof file uploaded' });
-    // store proof path in order.paymentProofs array (append)
-    const filename = `/uploads/${req.file.filename}`;
+    // store proof metadata (prefer S3 when configured)
     const existing = Array.isArray(order.paymentProofs) ? order.paymentProofs.slice() : [];
-    existing.push({ path: filename, uploadedAt: new Date(), uploadedBy: req.user && (req.user.email || req.user._id || req.user.id) });
+    let proofMeta = null;
+    try {
+      if (process.env.AWS_S3_BUCKET) {
+        // upload the temp file created by multer to S3 and remove the local file
+        const { uploadLocalFileToS3 } = require('../utils/s3');
+        const localPath = req.file.path; // multer saved file locally
+        const key = `proofs/${Date.now()}-${req.file.filename}`;
+        const uploaded = await uploadLocalFileToS3(localPath, key, req.file.mimetype || 'application/octet-stream');
+        proofMeta = { storage: 's3', bucket: uploaded.bucket, key: uploaded.key, url: uploaded.location, size: req.file.size, mime: req.file.mimetype };
+      } else {
+        // local fallback: store under /uploads
+        const filename = `/uploads/${req.file.filename}`;
+        proofMeta = { storage: 'local', path: filename, size: req.file.size, mime: req.file.mimetype };
+      }
+    } catch (e) {
+      console.error('Failed to store proof file', e && e.message ? e.message : e);
+      return res.status(500).json({ message: 'Failed to store proof file' });
+    }
+    proofMeta.uploadedAt = new Date();
+    proofMeta.uploadedBy = req.user && (req.user.email || req.user._id || req.user.id);
+    existing.push(proofMeta);
     const updates = { paymentProofs: existing };
     // If admin uploads and indicates success via query param ?markPaid=true, mark order paid
     if (req.query && String(req.query.markPaid) === 'true' && req.user?.isAdmin) {

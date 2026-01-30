@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { createUser: createInMemoryUser, findUserByEmail, setResetTokenForEmail, resetPasswordByHashedToken } = require('../utils/inMemoryAuth');
 const { sendMail } = require('../utils/mailer');
+const { pickEmail } = require('../utils/emailHelpers');
 const pgConfig = require('../config/sequelize');
 const { DataTypes } = require('sequelize');
 
@@ -53,7 +54,8 @@ function safeSign(payload) {
 
 exports.register = async (req, res) => {
   const dbAvailable = !!(adapter?.User && typeof adapter.User.findOne === 'function');
-  const { name, email, password, isAdmin } = req.body;
+  const { name, email: rawEmail, password, isAdmin } = req.body;
+  const email = pickEmail(rawEmail);
   if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
   try {
     if (dbAvailable) {
@@ -106,15 +108,20 @@ exports.register = async (req, res) => {
         return res.status(500).json({ message: 'Failed to set up email verification. Please contact support.' });
       }
 
-      // send OTP
-      try {
-        Promise.resolve(sendMail(
-          email,
-          'Verify your ElectroCart email',
-          `Your verification code is: ${otp}`,
-          `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
-        )).catch((err) => console.error('Verification email failed:', err && err.message ? err.message : err));
-      } catch (mailErr) { console.error('sendMail threw:', mailErr && mailErr.message ? mailErr.message : mailErr); }
+        // send OTP (use normalized email)
+        try {
+          const to = pickEmail(email);
+          if (to) {
+            Promise.resolve(sendMail(
+              to,
+              'Verify your ElectroCart email',
+              `Your verification code is: ${otp}`,
+              `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
+            )).catch((err) => console.error('Verification email failed:', err && err.message ? err.message : err));
+          } else {
+            console.warn('register: normalized email empty, skipping sendMail');
+          }
+        } catch (mailErr) { console.error('sendMail threw:', mailErr && mailErr.message ? mailErr.message : mailErr); }
 
       return res.json({ message: 'Verification code sent to email', email: user.email });
     }
@@ -147,7 +154,8 @@ exports.register = async (req, res) => {
 };
 
 exports.verifyEmail = async (req, res) => {
-  const { email, code } = req.body;
+    const { email: rawEmail, code } = req.body;
+  const email = pickEmail(rawEmail);
   if (!email || !code) return res.status(400).json({ message: 'Email and code are required' });
   try {
     const hashed = crypto.createHash('sha256').update(code).digest('hex');
@@ -186,7 +194,8 @@ exports.verifyEmail = async (req, res) => {
 
 // Resend verification endpoint with simple in-memory rate limiting
 exports.resendVerification = async (req, res) => {
-  const { email } = req.body;
+  const { email: rawEmail } = req.body;
+  const email = pickEmail(rawEmail);
   if (!email) return res.status(400).json({ message: 'Email is required' });
   try {
     const now = Date.now();
@@ -239,7 +248,8 @@ exports.resendVerification = async (req, res) => {
 
   recent.push(now);
   resendTracker.set(email, recent);
-  return res.json({ message: 'Verification code resent' });
+  // Always return a generic message to avoid leaking account existence
+  return res.json({ message: 'If an account with that email exists, you will receive instructions' });
   } catch (e) {
     console.error('resendVerification error:', e);
     return res.status(500).json({ message: 'Failed to resend verification code' });

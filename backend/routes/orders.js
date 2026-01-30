@@ -39,3 +39,4 @@ router.patch('/:id', authMiddleware, adminMiddleware, updateOrderStatus);
 router.patch('/:id/cancel', authMiddleware, cancelOrder);
 
 module.exports = router;
+module.exports.proofFileFilter = proofFileFilter;
