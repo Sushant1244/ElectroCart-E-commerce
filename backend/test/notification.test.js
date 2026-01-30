@@ -25,5 +25,8 @@ describe('notificationController.createNotification', () => {
     expect(adapter.Notification.create).toHaveBeenCalledWith({ userId: 123, title: 'Added to wishlist', body: 'Item added', meta: { productId: 'p1' } });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(fakeCreated);
+  // Verify mailer was invoked for the user's email
+  const mailer = require('../utils/mailer');
+  expect(mailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'user@example.com' }));
   });
 });
