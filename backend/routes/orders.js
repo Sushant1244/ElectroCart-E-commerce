@@ -39,4 +39,6 @@ router.patch('/:id', authMiddleware, adminMiddleware, updateOrderStatus);
 router.patch('/:id/cancel', authMiddleware, cancelOrder);
 
 module.exports = router;
+// expose allowed mimetypes for tests
+module.exports.ALLOWED_MIMES = ALLOWED_MIMES;
 module.exports.proofFileFilter = proofFileFilter;

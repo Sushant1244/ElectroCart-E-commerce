@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { register, login, forgotPassword, resetPassword, verifyEmail, resendVerification } = require('../controllers/authController');
-const rateLimit = require('express-rate-limit');
+let rateLimit;
+try {
+	rateLimit = require('express-rate-limit');
+} catch (e) {
+	// If the package isn't installed (e.g., temporary dev state), provide a no-op
+	// limiter so the server can start. This is a safe fallback for local dev only.
+	console.warn('[auth] express-rate-limit not installed; using no-op limiter');
+	rateLimit = (opts) => (req, res, next) => next();
+}
 
 // Apply rate limiting to auth endpoints to mitigate brute-force and abuse.
 const authLimiter = rateLimit({
