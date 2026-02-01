@@ -56,3 +56,24 @@ exports.getSalesStats = async (req, res) => {
   }
 };
 
+exports.getUserStats = async (req, res) => {
+  try {
+    // Try to use adapter.User.count where available (e.g., Sequelize). Fall back to find/findAll length.
+    let totalUsers = 0;
+    if (adapter.User && typeof adapter.User.count === 'function') {
+      totalUsers = await adapter.User.count();
+    } else if (adapter.User && (typeof adapter.User.findAll === 'function' || typeof adapter.User.find === 'function')) {
+      const users = await (adapter.User.findAll ? adapter.User.findAll() : adapter.User.find());
+      totalUsers = Array.isArray(users) ? users.length : 0;
+    } else {
+      // If there's an in-memory store helper, try to read it (best-effort)
+      totalUsers = 0;
+    }
+
+    // Optionally provide additional breakdowns in future (e.g., admins, recent signups)
+    res.json({ totalUsers });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+

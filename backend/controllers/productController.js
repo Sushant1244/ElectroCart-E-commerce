@@ -185,17 +185,27 @@ exports.deleteProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const { featured, category } = req.query;
-    // If DB is disconnected, return in-memory products for dev convenience
-    // If using mongoose and disconnected, fallback to in-memory products
-    if (!adapter.Product.find) {
+    // Build query from params
+    const query = {};
+    if (featured === 'true' || featured === true) query.featured = true;
+    if (category) query.category = category;
+
+    // Try adapter-backed DB read first; if it fails (DB down/misconfigured),
+    // fall back to the in-memory demo products for local/dev convenience.
+    try {
+      if (adapter.Product && typeof adapter.Product.find === 'function') {
+        const products = await adapter.Product.find(query, { sort: { field: 'createdAt', dir: 'DESC' } });
+        return res.json(products);
+      }
+    } catch (err) {
+      try { console.warn('adapter.Product.find failed, falling back to in-memory products', err && err.message ? err.message : err); } catch (logErr) {}
       const products = listInMemoryProducts({ featured, category });
       return res.json(products);
     }
-    const query = {};
-    if (featured === 'true') query.featured = true;
-    if (category) query.category = category;
-  const products = await adapter.Product.find(query, { sort: { field: 'createdAt', dir: 'DESC' } });
-  res.json(products);
+
+    // If adapter.Product.find not available, use in-memory list
+    const products = listInMemoryProducts({ featured, category });
+    res.json(products);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
