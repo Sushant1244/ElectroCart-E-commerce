@@ -23,14 +23,17 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [products, setProducts] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [userCount, setUserCount] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [exportMsg, setExportMsg] = useState('');
   const navigate = useNavigate();
   const [productSearch, setProductSearch] = useState('');
   const [productCategory, setProductCategory] = useState('All Categories');
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('All Status');
+  const [preferAnalytics, setPreferAnalytics] = useState(true);
 
   const UPLOAD_FALLBACK = {
     'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
@@ -66,16 +69,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [pRes, aRes, oRes] = await Promise.all([
+        const [pRes, aRes, oRes, uRes] = await Promise.all([
           API.get('/products').catch(() => ({ data: [] })),
           API.get('/analytics').catch(() => ({ data: null })),
-          API.get('/orders').catch(() => ({ data: null }))
+          API.get('/orders').catch(() => ({ data: null })),
+          API.get('/analytics/users').catch(() => ({ data: null }))
         ]);
         setProducts(pRes.data || []);
         setAnalytics(aRes.data || null);
         setOrders((oRes && oRes.data) || []);
+        setUserCount(uRes && typeof uRes.data === 'object' && uRes.data.totalUsers != null ? Number(uRes.data.totalUsers) : null);
       } catch (err) {
         console.debug('load error', err);
+        setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -134,6 +140,17 @@ export default function AdminDashboard() {
 
   if (loading) return <div className="loading">Loading...</div>;
 
+  if (fetchError) {
+    return (
+      <div className="admin-v2">
+        <div style={{ padding: 24 }} className="card">
+          <h3>Unable to load admin data</h3>
+          <p>Make sure the backend server is running (default port 5001). Check your terminal for backend errors and reload the page.</p>
+        </div>
+      </div>
+    );
+  }
+
   // computed filtered lists
   const filteredProducts = products.filter(p => {
     const q = productSearch.trim().toLowerCase();
@@ -153,31 +170,61 @@ export default function AdminDashboard() {
   // totalOrders can be derived from analytics or orders
   const totalOrders = analytics?.totalOrders || (orders.length || 0);
   // Top products: prefer analytics payload; otherwise derive from product.sold; if still empty, derive from recent orders
-  let topProducts = analytics?.topProducts || products.slice().sort((a, b) => (b.sold || 0) - (a.sold || 0)).slice(0, 6).map(p => ({ productId: p._id, productName: p.name, totalSold: p.sold || 0, price: p.price, image: p.images?.[0] || UPLOAD_FALLBACK[p.slug] }));
-  if ((!topProducts || topProducts.length === 0) && orders && orders.length) {
+  // Compute order-derived counts map
+  const orderCounts = {};
+  if (orders && orders.length) {
+    for (const o of orders) {
+      const items = o.items || o.orderItems || [];
+      for (const it of items) {
+        const pid = it.product || it.productId || it._id || it.id || it.slug || it.name;
+        const qty = Number(it.quantity || it.qty || 1) || 1;
+        orderCounts[pid] = (orderCounts[pid] || 0) + qty;
+      }
+    }
+  }
+
+  // Analytics-provided list (if any), but augment with salesCount derived from orders
+  const analyticsTop = Array.isArray(analytics?.topProducts) ? analytics.topProducts.map(tp => ({
+    productId: tp.productId || tp.id,
+    productName: tp.productName || tp.name || tp.productName || '',
+    price: tp.price || tp.total || 0,
+    image: tp.image || '',
+    // prefer order-derived counts when available, otherwise fall back to analytics-total
+    salesCount: orderCounts[tp.productId] || Number(tp.totalSold || tp.total || 0) || 0
+  })) : [];
+
+  // Derived from orders when analytics is missing or user prefers orders
+  let derivedTop = [];
+  if (Object.keys(orderCounts).length > 0) {
     const counts = {};
     for (const o of orders) {
       const items = o.items || o.orderItems || [];
       for (const it of items) {
         const pid = it.product || it.productId || it._id || it.id || it.slug || it.name;
-        const qty = Number(it.quantity || 1) || 1;
+        const qty = Number(it.quantity || it.qty || 1) || 1;
         const name = it.name || it.productName || '';
-        counts[pid] = counts[pid] || { totalSold: 0, name, price: it.price || 0, image: (it.image || '') };
+        const price = it.price || 0;
+        counts[pid] = counts[pid] || { totalSold: 0, name, price, image: (it.image || '') };
         counts[pid].totalSold += qty;
       }
     }
-    topProducts = Object.keys(counts).map(k => {
+    derivedTop = Object.keys(counts).map(k => {
       const entry = counts[k];
-      // try to find a matching product in the loaded products array by id, slug, or name
       const byId = products.find(p => (p._id && String(p._id) === String(k)) || (p.id && String(p.id) === String(k)));
       const bySlug = products.find(p => p.slug && String(p.slug) === String(k));
       const byName = products.find(p => p.name && String(p.name).toLowerCase() === String(k).toLowerCase());
       const matched = byId || bySlug || byName;
       const image = entry.image || (matched && (matched.images?.[0] || UPLOAD_FALLBACK[matched.slug])) || '';
       const price = entry.price || (matched && matched.price) || 0;
-      return { productId: k, productName: entry.name || (matched && matched.name) || k, totalSold: entry.totalSold, price, image };
-    }).sort((a,b)=>b.totalSold-a.totalSold).slice(0,6);
+      return { productId: k, productName: entry.name || (matched && matched.name) || k, salesCount: entry.totalSold, price, image };
+    }).sort((a,b)=>b.salesCount-a.salesCount).slice(0,6);
   }
+
+  // Choose displayed list based on toggle and availability
+  let displayedTopProducts = [];
+  if (preferAnalytics && analyticsTop && analyticsTop.length) displayedTopProducts = analyticsTop.slice(0,6);
+  else if (derivedTop && derivedTop.length) displayedTopProducts = derivedTop.slice(0,6);
+  else displayedTopProducts = analyticsTop.slice(0,6) || derivedTop.slice(0,6) || [];
   const lowStock = products.filter(p => Number(p.stock) < 20).slice(0, 6);
 
   // Helper to build salesByMonth from orders when analytics is not available
@@ -305,6 +352,11 @@ export default function AdminDashboard() {
               <div className="muted">{products.reduce((s, p) => s + (Number(p.stock) || 0), 0)} in stock</div>
             </div>
             <div className="stat">
+              <small>Users</small>
+              <div className="value">{userCount != null ? userCount : '—'}</div>
+              <div className="muted">Registered users</div>
+            </div>
+            <div className="stat">
               <small>Total Orders</small>
               <div className="value">{orders.length || totalOrders}</div>
               <div className="delta positive">+15.2%</div>
@@ -409,20 +461,35 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="card">
-              <h4>Top Selling Products</h4>
+            <div className="card top-products-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4>Top Selling Products</h4>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="radio" name="pref" checked={preferAnalytics} onChange={() => setPreferAnalytics(true)} />
+                    <span style={{ marginLeft: 4 }}>Analytics</span>
+                  </label>
+                  <label style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="radio" name="pref" checked={!preferAnalytics} onChange={() => setPreferAnalytics(false)} />
+                    <span style={{ marginLeft: 4 }}>Orders</span>
+                  </label>
+                </div>
+              </div>
               <div className="top-products">
-                {topProducts.map((tp, i) => (
-                  <div key={tp.productId || i} className="top-product-row">
-                    <div className="rank">#{i + 1}</div>
-                    {(() => { const { local, remote } = resolveImageSrc(tp.image || ''); return (<img src={local || remote || '/vite.svg'} alt="" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='/vite.svg'; }} />); })()}
-                    <div className="tp-meta">
-                      <div className="tp-name">{tp.productName}</div>
-                      <div className="muted small">{tp.totalSold} sales</div>
+                {displayedTopProducts.map((tp, i) => {
+                  const sales = (tp.salesCount ?? tp.totalSold ?? tp.total ?? 0);
+                  return (
+                    <div key={tp.productId || i} className="top-product-row">
+                      <div className="rank">#{i + 1}</div>
+                      {(() => { const { local, remote } = resolveImageSrc(tp.image || ''); return (<img src={local || remote || '/vite.svg'} alt="" loading="lazy" onError={(e)=>{ if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else e.currentTarget.src='/vite.svg'; }} />); })()}
+                      <div className="tp-meta">
+                        <div className="tp-name">{tp.productName}</div>
+                        <div className="muted small">{sales} sales</div>
+                      </div>
+                      <div className="tp-price">{formatCurrency(tp.price)}</div>
                     </div>
-                    <div className="tp-price">{formatCurrency(tp.price)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
