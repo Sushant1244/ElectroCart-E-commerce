@@ -10,7 +10,9 @@ export default defineConfig({
     proxy: {
       "/api": {
         // Use explicit IPv4 loopback to avoid accidental IPv6 resolution of 'localhost'
-        target: "http://127.0.0.1:5001",
+  // Allow overriding the backend URL with VITE_BACKEND_URL during local dev
+  // Default to the backend's usual port 5001 so Vite proxy reaches the running server.
+  target: process.env.VITE_BACKEND_URL || "http://127.0.0.1:5001",
         changeOrigin: true,
         secure: false,
         ws: false,
