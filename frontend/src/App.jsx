@@ -95,13 +95,13 @@ function App(){
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/admin" element={ user?.isAdmin ? requireVerified(<AdminDashboard />) : <Navigate to="/login" /> } />
+          <Route path="/admin" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminDashboard /></ErrorBoundary>) : <Navigate to="/login" /> } />
           {/* admin welcome route removed to keep a single /welcome page */}
           <Route path="/welcome" element={<UserWelcome />} />
-          <Route path="/admin/add" element={ user?.isAdmin ? requireVerified(<AdminAddProduct />) : <Navigate to="/login" /> } />
-          <Route path="/admin/edit/:id" element={ user?.isAdmin ? requireVerified(<AdminEditProduct />) : <Navigate to="/login" /> } />
-          <Route path="/admin/orders" element={ user?.isAdmin ? requireVerified(<AdminOrders />) : <Navigate to="/login" /> } />
-          <Route path="/admin/create-order" element={ user?.isAdmin ? requireVerified(<AdminCreateOrder />) : <Navigate to="/login" /> } />
+          <Route path="/admin/add" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminAddProduct /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/edit/:id" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminEditProduct /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/orders" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminOrders /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/create-order" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminCreateOrder /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/orders" element={ requireVerified(<Orders />) } />
           <Route path="/wishlist" element={ requireVerified(<ErrorBoundary><Wishlist /></ErrorBoundary>) } />
           <Route path="/verify-email" element={<VerifyEmail user={user} onVerified={(u) => { setUser(u); localStorage.setItem('user', JSON.stringify(u)); }} />} />

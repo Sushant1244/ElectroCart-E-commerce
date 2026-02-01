@@ -338,14 +338,15 @@ body, #root, .app {
 .flex { display: flex !important; }
 .gap-12 { gap: 12px !important; }
 .center { align-items: center; justify-content: center; }
-.img-48 { inline-size: 48px; block-size: 48px; overflow: hidden; border-radius: 6px; background: #f7f7f7; display:flex; align-items:center; justify-content:center; }
-.img-100pct { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.img-48 { width: 48px; height: 48px; overflow: hidden; border-radius: 6px; background: #f7f7f7; display:flex; align-items:center; justify-content:center; }
+.img-100pct { width: 100%; height: 100%; object-fit: cover; }
 .small-muted { font-size: 13px; color: #666; }
 .items-center { align-items: center; }
 .mb-10 { margin-bottom: 10px !important; }
 .flex-1 { flex: 1; }
 .fw-600 { font-weight: 600; }
 .m-0 { margin: 0 !important; }
+.mr-8 { margin-right: 8px !important; }
 
 /* Responsive adjustments */
 @media (max-width: 900px) {
@@ -1549,21 +1550,21 @@ button, .btn-primary, .btn-secondary {
 .rev-user { color:#94a3b8; font-size:0.9rem; }
 
 /* small utility classes to replace inline styles */
-.action-row { display:flex; gap:8px; margin-block-start:12px; }
-.btn-buy-now { margin-inline-start:8px; }
+.action-row { display:flex; gap:8px; margin-top:12px; }
+.btn-buy-now { margin-left:8px; }
 .rating-center { text-align:center; }
-.star-clickable { margin-inline-end:6px; cursor:pointer; font-size:1.4rem; }
-.rating-meta { margin-block-start:8px; color:#64748b; font-size:0.95rem; }
+.star-clickable { margin-right:6px; cursor:pointer; font-size:1.4rem; }
+.rating-meta { margin-top:8px; color:#64748b; font-size:0.95rem; }
 
 /* review form */
-.reviews-actions { display:flex; gap:12px; margin-block-start:12px; align-items:center; }
-.review-form { margin-block-start:12px; display:flex; flex-direction:column; gap:8px; }
+.reviews-actions { display:flex; gap:12px; margin-top:12px; align-items:center; }
+.review-form { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
 .review-form-stars { display:flex; gap:6px; }
 .star-select { background:none; border:none; font-size:1.4rem; cursor:pointer; opacity:0.5; }
 .star-select.selected { color:#f59e0b; opacity:1; }
-.review-comment { min-block-size:80px; padding:8px; border-radius:6px; border:1px solid #e6edf7; }
+.review-comment { min-height:80px; padding:8px; border-radius:6px; border:1px solid #e6edf7; }
 .review-form-actions { display:flex; gap:8px; }
-.mt-8 { margin-block-start:8px; }
+
 
 .product-page .images img {
   width: 100%;
