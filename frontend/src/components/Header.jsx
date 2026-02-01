@@ -103,7 +103,12 @@ export default function Header({ user, onLogout }) {
         <div className="container header-content">
           <div className="brand">
             <Link to="/" className="brand-link">
-              <img src="/uploads/logo.png" alt="Elecrocart" className="brand-logo" />
+              <img
+                src="/uploads/logo1.png"
+                alt="Elecrocart"
+                className="brand-logo"
+                onError={(e) => { try { e.currentTarget.onerror = null; e.currentTarget.src = '/uploads/logo.png'; } catch (err) {} }}
+              />
               <span className="brand-text">Elecrocart</span>
             </Link>
           </div>
@@ -128,7 +133,7 @@ export default function Header({ user, onLogout }) {
                 {/* search button removed per request; Enter key in input still triggers search */}
               </div>
               <NotificationDropdown />
-              <Link to="/wishlist" className="icon-btn wishlist-icon" aria-label={`Wishlist with ${wishlistCount} items`} style={{ marginRight: 8 }}>
+              <Link to="/wishlist" className="icon-btn wishlist-icon mr-8" aria-label={`Wishlist with ${wishlistCount} items`}>
                 <span className="heart-glyph" aria-hidden>♥</span>
                 {wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}
               </Link>
