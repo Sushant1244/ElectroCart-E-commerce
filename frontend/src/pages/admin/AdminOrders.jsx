@@ -76,11 +76,22 @@ export default function AdminOrders() {
           </thead>
           <tbody>
             {orders.map(order => (
-              <tr key={order._id}>
-                <td>{String(order._id).startsWith('ORD-') ? String(order._id) : `ORD-${String(order._id).slice(-3)}`}</td>
-                <td>{order.customer || order.user?.name || (order.user?.email || 'N/A')}</td>
-                <td>{order.email || order.user?.email || ''}</td>
-                <td>{typeof order.total === 'number' ? order.total.toLocaleString(undefined, {minimumFractionDigits:0}) : order.total}</td>
+              <tr key={order._id || order.id}>
+                {
+                  (() => {
+                    const oid = order.id || order._id || '';
+                    const displayId = String(oid);
+                    return (
+                      <td>{displayId.startsWith('ORD-') ? displayId : `ORD-${displayId.slice(-3)}`}</td>
+                    );
+                  })()
+                }
+                <td>{order.customer || order.customerName || order.user?.name || order.user?.email || 'N/A'}</td>
+                <td>{order.email || order.emailAddress || order.user?.email || ''}</td>
+                <td>{(() => {
+                  const totalVal = order.total ?? order.totalPrice ?? order.amount ?? order.grandTotal ?? 0;
+                  return typeof totalVal === 'number' ? totalVal.toLocaleString(undefined, { minimumFractionDigits: 0 }) : String(totalVal);
+                })()}</td>
                 <td>
                   <select
                     className={`status-badge-select ${order.status || 'pending'}`}
@@ -102,7 +113,10 @@ export default function AdminOrders() {
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </td>
-                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                <td>{(() => {
+                  const d = order.createdAt || order.created_at || order.date || order.purchasedAt || order.timestamp || null;
+                  try { return d ? new Date(d).toLocaleDateString() : ''; } catch (e) { return ''; }
+                })()}</td>
                 <td>
                   <button className="link" onClick={() => setSelectedOrder(order)}>View Details</button>
                 </td>
