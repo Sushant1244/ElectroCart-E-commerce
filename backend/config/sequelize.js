@@ -17,16 +17,28 @@ if (!POSTGRES_URL) {
   const Order = require('../models/pg/Order')(sequelize, DataTypes);
   const Review = require('../models/pg/Review')(sequelize, DataTypes);
   const Notification = require('../models/pg/Notification')(sequelize, DataTypes);
+  const Wishlist = require('../models/pg/Wishlist')(sequelize, DataTypes);
+  const CartItem = require('../models/pg/CartItem')(sequelize, DataTypes);
 
   // associations
   User.hasMany(Order, { foreignKey: 'userId' });
   Order.belongsTo(User, { foreignKey: 'userId' });
+  // Wishlist/Cart associations
+  User.hasMany(Wishlist, { foreignKey: 'userId' });
+  Wishlist.belongsTo(User, { foreignKey: 'userId' });
+  Product.hasMany(Wishlist, { foreignKey: 'productId' });
+  Wishlist.belongsTo(Product, { foreignKey: 'productId' });
+
+  User.hasMany(CartItem, { foreignKey: 'userId' });
+  CartItem.belongsTo(User, { foreignKey: 'userId' });
+  Product.hasMany(CartItem, { foreignKey: 'productId' });
+  CartItem.belongsTo(Product, { foreignKey: 'productId' });
   // Reviews associations
   Product.hasMany(Review, { foreignKey: 'productId' });
   Review.belongsTo(Product, { foreignKey: 'productId' });
   User.hasMany(Review, { foreignKey: 'userId' });
   Review.belongsTo(User, { foreignKey: 'userId' });
 
-  module.exports = { sequelize, Product, User, Order, Review, Notification };
+  module.exports = { sequelize, Product, User, Order, Review, Notification, Wishlist, CartItem };
 }
 

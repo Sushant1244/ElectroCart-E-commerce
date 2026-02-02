@@ -19,6 +19,8 @@ const uploadsRoutes = require('./routes/uploads');
 const paymentsRoutes = require('./routes/payments');
 const notificationsRoutes = require('./routes/notifications');
 const inquiriesRoutes = require('./routes/inquiries');
+const wishlistRoutes = require('./routes/wishlist');
+const cartRoutes = require('./routes/cart');
 const pgConfig = require('./config/sequelize');
 let pgProductsRouter = null;
 // Only initialize Postgres when running the server directly. This avoids
@@ -153,6 +155,8 @@ app.use('/api/analytics', analyticsRoutes);
 // uploads listing
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/cart', cartRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 
