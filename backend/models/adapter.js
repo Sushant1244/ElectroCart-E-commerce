@@ -9,7 +9,7 @@ const { Op } = require('sequelize');
 const adapter = {};
 
 if (pgConfig && pgConfig.Product) {
-  const { Product: PgProduct, User: PgUser, Order: PgOrder } = pgConfig;
+  const { Product: PgProduct, User: PgUser, Order: PgOrder, Wishlist: PgWishlist, CartItem: PgCartItem } = pgConfig;
   const NotificationModel = pgConfig.Notification;
 
   adapter.Product = {
@@ -228,6 +228,36 @@ if (pgConfig && pgConfig.Product) {
         return 0;
       }
     }
+  };
+
+  // Wishlist adapter
+  adapter.Wishlist = {
+    create: async (data) => {
+      if (!PgWishlist) return null;
+      const inst = await PgWishlist.create(data);
+      const obj = inst.toJSON(); obj._id = obj.id; return obj;
+    },
+    find: async (query = {}) => {
+      if (!PgWishlist) return [];
+      const rows = await PgWishlist.findAll({ where: query, order: [['createdAt', 'DESC']] });
+      return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; });
+    },
+    findOne: async (query = {}) => {
+      if (!PgWishlist) return null;
+      const inst = await PgWishlist.findOne({ where: query }); if (!inst) return null; const o = inst.toJSON(); o._id = o.id; return o;
+    },
+    remove: async (query = {}) => {
+      if (!PgWishlist) return 0;
+      const deleted = await PgWishlist.destroy({ where: query }); return deleted || 0;
+    }
+  };
+
+  // CartItem adapter
+  adapter.CartItem = {
+    create: async (data) => { if (!PgCartItem) return null; const inst = await PgCartItem.create(data); const o = inst.toJSON(); o._id = o.id; return o; },
+    find: async (query = {}) => { if (!PgCartItem) return []; const rows = await PgCartItem.findAll({ where: query, order: [['createdAt', 'DESC']] }); return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; }); },
+    updateById: async (id, update) => { if (!PgCartItem) return null; const inst = await PgCartItem.findByPk(id); if (!inst) return null; await inst.update(update); await inst.reload(); const o = inst.toJSON(); o._id = o.id; return o; },
+    deleteById: async (id) => { if (!PgCartItem) return 0; const inst = await PgCartItem.findByPk(id); if (!inst) return 0; await inst.destroy(); return 1; }
   };
 
 } else {
