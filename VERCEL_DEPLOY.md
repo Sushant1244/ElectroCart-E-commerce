@@ -91,6 +91,18 @@ postgres://username:password@host:port/database
 ### File Uploads
 Static files are served from `/uploads` path. Make sure uploads are properly configured.
 
+### Build Issues
+If the deployment fails to build, make sure:
+1. The `frontend/package.json` has a valid `build` script (e.g., `vite build`)
+2. The `vercel.json` points to `frontend/package.json` for the static build
+3. The output directory is set to `dist`
+
+### Frontend Not Showing
+If the frontend is not displaying after deployment:
+1. Check that the route destination points to `frontend/dist/index.html`
+2. Verify the build completed successfully in Vercel deployment logs
+3. Ensure environment variable `VITE_API_URL` is set correctly (leave empty for production to use relative `/api` path)
+
 ## Notes
 
 - The backend runs as a Vercel serverless function
