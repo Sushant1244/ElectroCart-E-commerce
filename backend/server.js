@@ -101,22 +101,49 @@ const PORT = process.env.PORT || 5001;
 // Enable CORS: in production use CLIENT_URL, in development allow localhost on common dev ports
 // For local debugging you can set DEV_ALLOW_ALL_ORIGINS=true in backend/.env to allow any origin
 if (process.env.NODE_ENV === 'production') {
-  // In Vercel monorepo, frontend and backend are on same domain, so allow request origin
+  // In Vercel monorepo, frontend and backend are on same domain, so we need flexible CORS
+  // to support preview deployments and different branches
   app.use(cors({
     origin: (origin, cb) => {
-      // Allow requests with no origin (server-to-server) or same-origin requests
+      // Allow requests with no origin (server-to-server, same-origin requests)
       if (!origin) return cb(null, true);
-      // Allow any origin on the same Vercel domain (including preview deployments)
-      // Also allow explicitly configured CLIENT_URL
-      const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
+      
+      // Build list of allowed origins
+      const allowedOrigins = [];
+      
+      // Add explicit CLIENT_URL if set
+      if (process.env.CLIENT_URL) {
+        allowedOrigins.push(process.env.CLIENT_URL);
+        // Also allow without https prefix for flexibility
+        allowedOrigins.push(process.env.CLIENT_URL.replace('https://', 'http://'));
+      }
+      
+      // Always allow Vercel domains (production and preview deployments)
+      const vercelPattern = /https?:\/\/[^/]*vercel\.app$/i;
+      const isVercelDomain = vercelPattern.test(origin) || 
+                            origin.includes('.vercel.app') ||
+                            origin.includes('vercel.app');
+      
+      // Allow Vercel storage
+      const isVercelStorage = origin.includes('vercel-storage.com');
+      
+      // Check if origin matches any allowed pattern
       const isAllowed = allowedOrigins.some(allowed => 
-        allowed && (origin === allowed || origin.endsWith('.' + allowed) || origin.endsWith('-' + allowed))
-      ) || origin.includes('vercel.app') || origin.includes('vercel-storage.com');
-      if (isAllowed) return cb(null, true);
-      // For same-domain requests (frontend calling backend on same Vercel app)
-      return cb(null, true);
+        origin === allowed || 
+        origin.endsWith('.' + allowed.replace('https://', '')) ||
+        origin.endsWith('-' + allowed.replace('https://', ''))
+      );
+      
+      if (isAllowed || isVercelDomain || isVercelStorage) {
+        return cb(null, true);
+      }
+      
+      // Block other origins in production for security
+      return cb(new Error('Not allowed by CORS policy'), false);
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   }));
   } else {
     if (process.env.DEV_ALLOW_ALL_ORIGINS === 'true') {
@@ -184,18 +211,19 @@ if (pgProductsRouter) {
   app.use('/api/pg/products', pgProductsRouter);
 }
 
-app.get('/', (req, res) => res.send('API running'));
-
 // Serve frontend static files in production (AFTER API routes)
 if (process.env.NODE_ENV === 'production') {
   // Serve React static files from frontend/dist
-  const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+  // Use process.cwd() to get the project root for Vercel compatibility
+  const frontendDistPath = path.join(process.cwd(), 'frontend', 'dist');
   app.use(express.static(frontendDistPath));
 
   // Handle React routing - serve index.html for all non-API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
+} else {
+  app.get('/', (req, res) => res.send('API running'));
 }
 
 // Start server with an error handler to gracefully report listen errors

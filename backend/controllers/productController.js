@@ -213,20 +213,36 @@ exports.getProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
-  const product = await adapter.Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: 'Not found' });
+    const product = await adapter.Product.findById(req.params.id);
+    // If not found in DB, fall back to in-memory products
+    if (!product) {
+      const inMemoryProduct = findInMemoryById(req.params.id);
+      if (inMemoryProduct) return res.json(inMemoryProduct);
+      return res.status(404).json({ message: 'Not found' });
+    }
     res.json(product);
   } catch (e) {
+    // On error, try fallback to in-memory products
+    const inMemoryProduct = findInMemoryById(req.params.id);
+    if (inMemoryProduct) return res.json(inMemoryProduct);
     res.status(500).json({ message: e.message });
   }
 };
 
 exports.getProductBySlug = async (req, res) => {
   try {
-  const product = await adapter.Product.findBySlug(req.params.slug);
-    if (!product) return res.status(404).json({ message: 'Not found' });
+    const product = await adapter.Product.findBySlug(req.params.slug);
+    // If not found in DB, fall back to in-memory products
+    if (!product) {
+      const inMemoryProduct = findInMemoryBySlug(req.params.slug);
+      if (inMemoryProduct) return res.json(inMemoryProduct);
+      return res.status(404).json({ message: 'Not found' });
+    }
     res.json(product);
   } catch (e) {
+    // On error, try fallback to in-memory products
+    const inMemoryProduct = findInMemoryBySlug(req.params.slug);
+    if (inMemoryProduct) return res.json(inMemoryProduct);
     res.status(500).json({ message: e.message });
   }
 };
