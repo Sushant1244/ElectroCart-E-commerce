@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_TOKEN ;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
 const authGuard = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
