@@ -9,6 +9,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     // Bind to IPv4 localhost to avoid IPv6-only binding issues on some macOS setups
