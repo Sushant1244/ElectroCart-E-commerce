@@ -17,7 +17,7 @@ export function resolveImageSrc(img) {
   const filename = cleanPath.substring(lastSlash + 1);
   // encode filename but preserve slashes and spaces replaced with %20
   const encoded = encodeURIComponent(filename).replace(/%20/g, '%20');
-  const local = `${window.location.origin}${prefix}${encoded}`; // try local public/uploads first
-  const remote = `${API_BASE}${prefix}${encoded}`; // backend fallback
+  const local = `${window.location.origin}/uploads/${encoded}`; // try local public/uploads first
+  const remote = `${API_BASE.replace('/api', '')}/uploads/${encoded}`; // backend fallback (remove /api from base)
   return { local, remote };
 }

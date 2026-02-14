@@ -9,20 +9,44 @@ export default function Login({ onLogin }){
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const login = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
     try {
-  const res = await API.post('/auth/login', { email, password });
-  // onLogin now returns the normalized user object
-  const normalizedUser = onLogin(res.data.token, res.data.user);
+      const res = await API.post('/auth/login', { email, password });
+      
+      // Check if email is verified
+      const userData = res.data.user;
+      if (userData.emailVerified === false) {
+        // Store user data temporarily and redirect to verify email
+        localStorage.setItem('user', JSON.stringify({ 
+          ...userData, 
+          emailVerified: false 
+        }));
+        setError('Please verify your email before logging in. A new verification code has been sent.');
+        
+        // Try to resend verification code
+        try {
+          await API.post('/auth/resend-verification', { email });
+        } catch (resendErr) {
+          // Ignore resend errors, user can request manually
+        }
+        
+        setLoading(false);
+        return;
+      }
+      
+      // onLogin now returns the normalized user object
+      const normalizedUser = onLogin(res.data.token, res.data.user);
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       }
       // Redirect admin to admin panel, customer to home
-  if (normalizedUser?.isAdmin) {
+      if (normalizedUser?.isAdmin) {
         navigate('/admin');
       } else {
         navigate('/');
@@ -32,14 +56,14 @@ export default function Login({ onLogin }){
       const serverMsg = err?.response?.data?.message;
       const status = err?.response?.status;
       if (serverMsg) {
-        alert(serverMsg + (status ? ` (status ${status})` : ''));
+        setError(serverMsg + (status ? ` (status ${status})` : ''));
       } else if (err.request && !err.response) {
         // Network error / backend unreachable
-        alert(`Unable to contact backend at ${API_BASE}.\nPlease start the backend: open a terminal and run:\ncd backend && npm install && npm run dev`);
+        setError(`Unable to contact backend at ${API_BASE}.\nPlease start the backend: open a terminal and run:\ncd backend && npm install && npm run dev`);
       } else if (err.message) {
-        alert('Login failed: ' + err.message);
+        setError('Login failed: ' + err.message);
       } else {
-        alert('Login failed. Please check your credentials.');
+        setError('Login failed. Please check your credentials.');
       }
     } finally {
       setLoading(false);
@@ -51,6 +75,17 @@ export default function Login({ onLogin }){
       <div className="auth-card">
         <h2>Welcome Back</h2>
         <p className="auth-subtitle">Please enter your credentials to login</p>
+
+        {error && (
+          <div className="error-message">
+            {error}
+            {error.includes('verify') && (
+              <Link to="/verify-email" style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
+                Click here to verify your email →
+              </Link>
+            )}
+          </div>
+        )}
 
         <form onSubmit={login} className="auth-form">
           <div className="form-group">

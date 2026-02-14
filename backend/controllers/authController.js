@@ -112,11 +112,29 @@ exports.register = async (req, res) => {
         try {
           const to = pickEmail(email);
           if (to) {
+            const otpHtml = `<!doctype html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Verify Your Email</title></head>
+<body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:0;padding:0;background:#f3f4f6;">
+  <div style="max-width:480px;margin:40px auto;padding:24px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:#2563eb;color:white;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;">EC</div>
+      <h1 style="margin:16px 0 8px;font-size:24px;color:#0f172a;">Verify Your Email</h1>
+      <p style="color:#64748b;margin:0;">Enter the following code to verify your email address:</p>
+    </div>
+    <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px;padding:20px;text-align:center;margin:24px 0;">
+      <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2563eb;">${otp}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:14px;text-align:center;margin:0;">This code expires in <strong>10 minutes</strong>.</p>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">If you didn't request this code, please ignore this email.</p>
+  </div>
+</body>
+</html>`;
             Promise.resolve(sendMail(
               to,
               'Verify your ElectroCart email',
               `Your verification code is: ${otp}`,
-              `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
+              otpHtml
             )).catch((err) => console.error('Verification email failed:', err && err.message ? err.message : err));
           } else {
             console.warn('register: normalized email empty, skipping sendMail');
@@ -144,7 +162,24 @@ exports.register = async (req, res) => {
         email,
         'Verify your ElectroCart email',
         `Your verification code is: ${otp}`,
-        `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
+        `<!doctype html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Verify Your Email</title></head>
+<body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:0;padding:0;background:#f3f4f6;">
+  <div style="max-width:480px;margin:40px auto;padding:24px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:#2563eb;color:white;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;">EC</div>
+      <h1 style="margin:16px 0 8px;font-size:24px;color:#0f172a;">Verify Your Email</h1>
+      <p style="color:#64748b;margin:0;">Enter the following code to verify your email address:</p>
+    </div>
+    <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px;padding:20px;text-align:center;margin:24px 0;">
+      <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2563eb;">${otp}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:14px;text-align:center;margin:0;">This code expires in <strong>10 minutes</strong>.</p>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">If you didn't request this code, please ignore this email.</p>
+  </div>
+</body>
+</html>`
       )).catch(() => {});
     } catch (e) {}
     return res.json({ message: 'Verification code sent to email', email: user.email });
@@ -227,7 +262,27 @@ exports.resendVerification = async (req, res) => {
         if (!user.emailVerified) updates.emailVerified = false;
         await adapter.User.findByIdAndUpdate(id, updates);
       }
-      try { Promise.resolve(sendMail(email, 'Verify your ElectroCart email', `Your verification code is: ${otp}`, `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`)).catch(() => {}); } catch (e) {}
+      try { 
+        const resendOtpHtml = `<!doctype html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>New Verification Code</title></head>
+<body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:0;padding:0;background:#f3f4f6;">
+  <div style="max-width:480px;margin:40px auto;padding:24px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:#2563eb;color:white;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;">EC</div>
+      <h1 style="margin:16px 0 8px;font-size:24px;color:#0f172a;">New Verification Code</h1>
+      <p style="color:#64748b;margin:0;">Here's your new verification code:</p>
+    </div>
+    <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px;padding:20px;text-align:center;margin:24px 0;">
+      <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2563eb;">${otp}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:14px;text-align:center;margin:0;">This code expires in <strong>10 minutes</strong>.</p>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">If you didn't request this code, please ignore this email.</p>
+  </div>
+</body>
+</html>`;
+        Promise.resolve(sendMail(email, 'Verify your ElectroCart email', `Your verification code is: ${otp}`, resendOtpHtml)).catch(() => {}); 
+      } catch (e) {}
     } else {
       const mem = require('../utils/inMemoryAuth');
       user = await mem.findUserByEmail(email);
@@ -243,7 +298,27 @@ exports.resendVerification = async (req, res) => {
       user.emailVerificationExpire = Date.now() + (10 * 60 * 1000);
       // do not flip already-verified users to unverified
       if (!user.emailVerified) user.emailVerified = false;
-      try { Promise.resolve(sendMail(email, 'Verify your ElectroCart email', `Your verification code is: ${otp}`, `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`)).catch(() => {}); } catch (e) {}
+      try { 
+        const resendOtpHtml = `<!doctype html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>New Verification Code</title></head>
+<body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:0;padding:0;background:#f3f4f6;">
+  <div style="max-width:480px;margin:40px auto;padding:24px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:#2563eb;color:white;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;">EC</div>
+      <h1 style="margin:16px 0 8px;font-size:24px;color:#0f172a;">New Verification Code</h1>
+      <p style="color:#64748b;margin:0;">Here's your new verification code:</p>
+    </div>
+    <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px;padding:20px;text-align:center;margin:24px 0;">
+      <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2563eb;">${otp}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:14px;text-align:center;margin:0;">This code expires in <strong>10 minutes</strong>.</p>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">If you didn't request this code, please ignore this email.</p>
+  </div>
+</body>
+</html>`;
+        Promise.resolve(sendMail(email, 'Verify your ElectroCart email', `Your verification code is: ${otp}`, resendOtpHtml)).catch(() => {}); 
+      } catch (e) {}
     }
 
   recent.push(now);
@@ -267,7 +342,16 @@ exports.login = async (req, res) => {
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
       const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ token, user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin } });
+      return res.json({ 
+        token, 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          name: user.name, 
+          isAdmin: user.isAdmin,
+          emailVerified: user.emailVerified || false
+        } 
+      });
     } catch (e) {
       return res.status(500).json({ message: e.message });
     }
@@ -296,7 +380,16 @@ exports.login = async (req, res) => {
   if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
 
   const token = safeSign({ id: user._id || user.id });
-  res.json({ token, user: { id: user._id || user.id, email: user.email, name: user.name, isAdmin: user.isAdmin } });
+  res.json({ 
+    token, 
+    user: { 
+      id: user._id || user.id, 
+      email: user.email, 
+      name: user.name, 
+      isAdmin: user.isAdmin,
+      emailVerified: user.emailVerified || false
+    } 
+  });
   } catch (e) {
   try { console.error('login error:', e?.stack ?? e); } catch (error_) { console.error('Failed to log login error', error_); }
   res.status(500).json({ message: e?.message ?? '' });

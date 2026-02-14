@@ -9,91 +9,144 @@ const {
   NODE_ENV,
 } = process.env;
 
-// transporter is created lazily; initTransport will set it up.
+// Transporter is created lazily
 let transporter = null;
-let usingEthereal = false;
 
+/**
+ * Initialize and return the Gmail SMTP transporter
+ * Requires Gmail credentials with App-Specific Password
+ */
 async function initTransport() {
   if (transporter) return transporter;
 
-  if (SMTP_HOST && SMTP_USER) {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT || 587),
-      secure: Number(SMTP_PORT || 587) === 465, // true for 465, false for other ports
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-    console.log('[mailer] using SMTP transport', { host: SMTP_HOST, port: SMTP_PORT || 587 });
-    // verify transporter connectivity/config now so failures are visible immediately
-    try {
-      await transporter.verify();
-      console.log('[mailer] SMTP transport verified successfully');
-    } catch (vErr) {
-      console.error('[mailer] SMTP transport verification failed:', vErr && vErr.message ? vErr.message : vErr);
-      // keep transporter so sendMail will still attempt and surface errors per message
-    }
-    return transporter;
+  // Validate Gmail configuration
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    const error = new Error('Gmail SMTP not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS in .env');
+    console.error('[mailer] Configuration error:', error.message);
+    throw error;
   }
 
-  // If we're in production and SMTP is not configured, it's a likely misconfiguration.
-  if (NODE_ENV === 'production') {
-    console.error('[mailer] SMTP not configured in production (SMTP_HOST/SMTP_USER missing). Emails will fail.');
-    // create a rejecting transporter so callers get a clear error
-    transporter = {
-      sendMail: () => Promise.reject(new Error('SMTP not configured in production')),
-    };
-    return transporter;
+  // Check if using placeholder values
+  if (SMTP_USER === 'your-gmail@gmail.com' || SMTP_PASS === 'your-app-specific-password') {
+    const error = new Error('Please configure your Gmail credentials in backend/.env');
+    console.error('[mailer] Configuration error:', error.message);
+    throw error;
   }
 
-  // Development fallback: create an Ethereal test account so emails can be inspected locally
+  // Create Gmail SMTP transporter
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT || 587),
+    secure: Number(SMTP_PORT || 587) === 465, // true for 465 (SSL), false for 587 (TLS)
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+    // Gmail specific TLS settings
+    tls: {
+      rejectUnauthorized: true,
+    },
+  });
+
+  console.log('[mailer] Initializing Gmail SMTP transport', { 
+    host: SMTP_HOST, 
+    port: SMTP_PORT || 587,
+    user: SMTP_USER 
+  });
+
+  // Verify transporter connectivity
   try {
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: { user: testAccount.user, pass: testAccount.pass },
-    });
-    usingEthereal = true;
-    console.log('[mailer] no SMTP configured; using ethereal test account for local email previews');
-    return transporter;
-  } catch (e) {
-    // last-resort stub transport
-    console.warn('[mailer] failed to create ethereal test account, falling back to console-stub:', e && e.message ? e.message : e);
-    transporter = {
-      sendMail: (opts) => {
-        console.log('[mailer stub] sendMail called with:', {
-          from: opts.from,
-          to: opts.to,
-          subject: opts.subject,
-          text: opts.text,
-        });
-        return Promise.resolve({ accepted: [opts.to] });
-      },
-    };
-    return transporter;
+    await transporter.verify();
+    console.log('[mailer] Gmail SMTP connection verified successfully');
+  } catch (vErr) {
+    console.error('[mailer] Gmail SMTP verification failed:', vErr?.message || vErr);
+    console.error('[mailer] Common issues:');
+    console.error('[mailer]   - Using regular password instead of App-Specific Password');
+    console.error('[mailer]   - 2-Step Verification not enabled on Google Account');
+    console.error('[mailer]   - App password not created or expired');
+    throw vErr;
   }
+
+  return transporter;
 }
 
+/**
+ * Send an email to the specified recipient
+ * @param {string} to - Recipient email address (user's Gmail from registration)
+ * @param {string} subject - Email subject
+ * @param {string} text - Plain text body
+ * @param {string} html - HTML body
+ * @returns {Promise<object>} - Email send result
+ */
 async function sendMail(to, subject, text, html) {
-  const from = FROM_EMAIL || 'no-reply@electrocart.local';
+  // Validate recipient
+  if (!to) {
+    throw new Error('Email recipient (to) is required');
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(to)) {
+    throw new Error(`Invalid email address: ${to}`);
+  }
+
+  // Validate subject
+  if (!subject) {
+    throw new Error('Email subject is required');
+  }
+
+  const from = FROM_EMAIL || SMTP_USER;
+  
+  if (!from) {
+    throw new Error('Sender email (FROM_EMAIL or SMTP_USER) is required');
+  }
+
   const mailOptions = { from, to, subject, text, html };
+
   try {
     await initTransport();
+    
+    if (!transporter || !transporter.sendMail) {
+      throw new Error('Email transporter not initialized');
+    }
+    
     const res = await transporter.sendMail(mailOptions);
-    // nodemailer returns additional info; if ethereal was used, print preview url
-    try {
-      if (usingEthereal && res) {
-        const preview = nodemailer.getTestMessageUrl(res);
-        if (preview) console.log('[mailer] Preview URL:', preview);
-      }
-    } catch (e) { /* ignore preview errors */ }
-    console.log('[mailer] sent', res && res.accepted ? res.accepted : res);
+    
+    console.log('[mailer] Email sent successfully', {
+      to: to,
+      subject: subject,
+      messageId: res?.messageId,
+      accepted: res?.accepted,
+    });
+    
     return res;
   } catch (err) {
-    console.error('[mailer] error sending email:', err && err.message ? err.message : err);
-    throw err;
+    // Detailed error logging
+    console.error('[mailer] Email delivery failed:', {
+      to: to,
+      subject: subject,
+      error: err?.message || err,
+      code: err?.code,
+      command: err?.command,
+    });
+    
+    // Provide helpful error messages
+    if (err?.code === 'EAUTH' || (err?.message && err.message.includes('authentication'))) {
+      throw new Error('Gmail authentication failed. Please verify your App-Specific Password is correct. Go to Google Account > Security > App passwords to create a new one.');
+    }
+    
+    if (err?.code === 'ECONNECTION' || (err?.message && err.message.includes('connect'))) {
+      throw new Error('Failed to connect to Gmail SMTP server. Please verify SMTP_HOST (smtp.gmail.com) and SMTP_PORT (587 or 465) are correct.');
+    }
+    
+    if (err?.code === 'ETIMEDOUT') {
+      throw new Error('Gmail SMTP connection timed out. Please check your network/firewall settings.');
+    }
+    
+    // Re-throw with context
+    throw new Error(`Failed to send email to ${to}: ${err?.message || 'Unknown error'}`);
   }
 }
 
-module.exports = { sendMail };
+// Export functions
+module.exports = { sendMail, initTransport };

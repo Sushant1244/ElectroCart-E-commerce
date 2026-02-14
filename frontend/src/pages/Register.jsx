@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../api/api';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -16,15 +16,38 @@ export default function Register({ onLogin }){
   const [otpCode, setOtpCode] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  const formatCountdown = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const register = async (e) => {
     e.preventDefault();
+    setError('');
+    
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
     if (!agreeTerms) {
-      alert('Please agree to the Terms of Service');
+      setError('Please agree to the Terms of Service');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
     try {
@@ -42,32 +65,41 @@ export default function Register({ onLogin }){
       // Otherwise expect a verification flow: backend sends { message, email }
       setRegisteredEmail(res.data.email || (email || '').trim());
       setOtpPending(true);
+      setCountdown(60); // Start countdown after first OTP is sent
       return;
     } catch (err) {
       // Surface server validation messages and network errors to help debugging
       const serverMsg = err?.response?.data?.message;
       const status = err?.response?.status;
       if (serverMsg) {
-        alert(serverMsg + (status ? ` (status ${status})` : ''));
+        setError(serverMsg + (status ? ` (status ${status})` : ''));
       } else if (err.request && !err.response) {
         // Network error / backend unreachable
-        alert(`Unable to contact backend at ${API_BASE}.\nPlease start the backend: open a terminal and run:\ncd backend && npm install && node server.js`);
+        setError(`Unable to contact backend at ${API_BASE}. Please start the backend: open a terminal and run: cd backend && npm install && node server.js`);
       } else if (err.message) {
-        alert('Registration failed: ' + err.message);
+        setError('Registration failed: ' + err.message);
       } else {
-        alert('Registration failed');
+        setError('Registration failed');
       }
     }
   };
 
   const verifyOtp = async (e) => {
     e && e.preventDefault();
-    if (!otpCode || otpCode.trim().length !== 6) return alert('Enter the 6-digit code sent to your email');
+    setError('');
+    
+    if (!otpCode || otpCode.trim().length !== 6) {
+      setError('Enter the 6-digit code sent to your email');
+      return;
+    }
     try {
       setVerifying(true);
       const resp = await API.post('/auth/verify-email', { email: registeredEmail || email, code: otpCode.trim() });
       // re-login or fetch user again if needed. For now, simply hide OTP panel and navigate home
       setOtpPending(false);
+      
+      setSuccessMessage('Email verified successfully!');
+      
       // Attempt to log the user in automatically after successful verification
       try {
         const loginResp = await API.post('/auth/login', { email: registeredEmail || email, password: (password || '').trim() });
@@ -77,13 +109,49 @@ export default function Register({ onLogin }){
       } catch (loginErr) {
         // ignore login failure - user can manually login
       }
-      navigate('/');
+      
+      setTimeout(() => navigate('/'), 1500);
     } catch (err) {
       const serverMsg = err?.response?.data?.message;
-      if (serverMsg) return alert(serverMsg);
-      alert('Verification failed');
+      if (serverMsg?.includes('expired')) {
+        setError('The verification code has expired. Please request a new one.');
+      } else if (serverMsg?.includes('Invalid')) {
+        setError('Invalid verification code. Please check and try again.');
+      } else {
+        setError(serverMsg || 'Verification failed');
+      }
+      setOtpCode('');
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (countdown > 0 || resendLoading) return;
+    
+    try {
+      setResendLoading(true);
+      setError('');
+      
+      await API.post('/auth/resend-verification', { email: registeredEmail || email });
+      
+      setSuccessMessage('A new verification code has been sent to your email.');
+      setCountdown(60);
+      
+      // Clear message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+      
+    } catch (err) {
+      const serverMsg = err?.response?.data?.message;
+      if (serverMsg?.includes('wait')) {
+        setError('Please wait before requesting another code.');
+      } else if (serverMsg?.includes('Too many')) {
+        setError('Too many requests. Please try again later.');
+      } else {
+        setError(serverMsg || 'Failed to resend code');
+      }
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -93,7 +161,19 @@ export default function Register({ onLogin }){
         <h2>Create Account</h2>
         <p className="auth-subtitle">Sign up to get started</p>
         
-  {/* role selector removed: registrations create regular customers by default */}
+        {/* role selector removed: registrations create regular customers by default */}
+
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
+        
+        {successMessage && !otpPending && (
+          <div className="success-message">
+            {successMessage}
+          </div>
+        )}
 
         {!otpPending ? (
           <form onSubmit={register} className="auth-form">
@@ -183,23 +263,46 @@ export default function Register({ onLogin }){
           </form>
         ) : (
           <form onSubmit={verifyOtp} className="auth-form">
-            <p>Please enter the 6-digit verification code sent to <strong>{registeredEmail || email}</strong></p>
+            {successMessage && (
+              <div className="success-message">
+                {successMessage}
+              </div>
+            )}
+            
+            <p className="otp-instructions">Please enter the 6-digit verification code sent to <strong>{registeredEmail || email}</strong></p>
+            
             <div className="form-group">
               <label>Verification Code</label>
               <div className="input-wrapper">
                 <input
                   type="text"
                   value={otpCode}
-                  onChange={e => setOtpCode(e.target.value)}
+                  onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="123456"
                   maxLength={6}
                   required
+                  className="otp-input"
                 />
               </div>
             </div>
+            
             <div className="form-group">
-              <button type="submit" className="btn-auth-primary" disabled={verifying}>{verifying ? 'Verifying...' : 'Verify Email'}</button>
+              <button type="submit" className="btn-auth-primary" disabled={verifying || otpCode.length !== 6}>
+                {verifying ? 'Verifying...' : 'Verify Email'}
+              </button>
             </div>
+            
+            <p className="resend-text">
+              Didn't receive the code? 
+              <button 
+                type="button"
+                onClick={resendOtp} 
+                disabled={resendLoading || countdown > 0} 
+                className="btn-link"
+              >
+                {resendLoading ? 'Sending...' : countdown > 0 ? `Resend in ${formatCountdown(countdown)}` : 'Resend code'}
+              </button>
+            </p>
           </form>
         )}
 
