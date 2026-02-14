@@ -4,13 +4,16 @@ import axios from 'axios';
 const getBaseURL = () => {
   // If explicitly set, use that value (for custom API URLs)
   if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== '') {
-    return import.meta.env.VITE_API_URL;
+    const url = import.meta.env.VITE_API_URL;
+    // Ensure /api prefix is included
+    return url.endsWith('/api') ? url : `${url}/api`;
   }
   // Use /api prefix in production (served from same origin)
   if (import.meta.env.MODE === 'production') {
     return '/api';
   }
-  return 'http://localhost:5001';
+  // Development: add /api prefix to match backend routes
+  return 'http://localhost:5001/api';
 };
 
 const api = axios.create({
