@@ -288,4 +288,74 @@ router.post('/bank/webhook', async (req, res) => {
   }
 });
 
+// Dev helper: initiate a fake bank transfer. This returns bank instructions and a
+// unique reference. In production you would redirect users to bank payment rails
+// or show real banking instructions. This endpoint is intentionally simple and
+// suitable for local development/testing.
+router.post('/bank/initiate', async (req, res) => {
+  try {
+    const { purchase_order_id, amount } = req.body || {};
+    if (!purchase_order_id || !amount) return res.status(400).json({ message: 'purchase_order_id and amount are required' });
+
+    // Create a simple reference id
+    const ref = `BANK-${Date.now()}-${Math.floor(Math.random() * 9000) + 1000}`;
+    // Store in pendingPayments map so webhook/confirm can find it
+    pendingPayments.set(String(ref), { orderId: purchase_order_id, amount, createdAt: Date.now(), provider: 'bank' });
+
+    // Return human-friendly bank instructions (dev-only values)
+    return res.json({
+      ok: true,
+      provider: 'bank',
+      instructions: {
+        accountName: 'ElectroCart Dev Account',
+        accountNumber: '000123456789',
+        bankName: 'Dev Bank',
+        iban: 'DEV00 0000 0000 0000 0000',
+        reference: ref,
+        amount,
+        note: 'Use the reference exactly so the payment can be matched to your order.'
+      }
+    });
+  } catch (e) {
+    console.error('bank initiate failed', e && e.message ? e.message : e);
+    return res.status(500).json({ message: 'bank initiate failed' });
+  }
+});
+
+// Dev helper: confirm a fake bank transfer (simulate provider callback). Accepts
+// { reference } or { purchase_order_id } and marks the order paid.
+router.post('/bank/confirm', async (req, res) => {
+  try {
+    const { reference, purchase_order_id, status } = req.body || {};
+    const ref = reference || null;
+    let entry = null;
+    if (ref) entry = pendingPayments.get(String(ref));
+    if (!entry && purchase_order_id) {
+      // try to find by order id
+      for (const [k, v] of pendingPayments.entries()) {
+        if (String(v.orderId) === String(purchase_order_id)) { entry = v; break; }
+      }
+    }
+    if (!entry && !purchase_order_id) return res.status(400).json({ message: 'reference or purchase_order_id required' });
+
+    const orderId = entry ? entry.orderId : purchase_order_id;
+    const paid = (String(status || 'paid').toLowerCase() === 'paid' || String(status || 'confirmed').toLowerCase() === 'confirmed');
+
+    try {
+      const adapter = require('../models/adapter');
+      if (adapter && adapter.Order && typeof adapter.Order.findByIdAndUpdate === 'function') {
+        await adapter.Order.findByIdAndUpdate(orderId, { isPaid: paid, paidAt: paid ? new Date() : null, paymentResult: { provider: 'bank', reference: ref || null, status: status || 'paid' } });
+      }
+    } catch (e) { console.warn('bank confirm: failed to update order', e && e.message ? e.message : e); }
+
+    // remove pending mapping if present
+    if (ref) pendingPayments.delete(String(ref));
+
+    return res.json({ ok: true, orderId, paid });
+  } catch (e) {
+    console.error('bank confirm failed', e && e.message ? e.message : e);
+    return res.status(500).json({ message: 'bank confirm failed' });
+  }
+});
+
 

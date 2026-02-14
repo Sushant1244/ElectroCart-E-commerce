@@ -5,6 +5,9 @@ const path = require('node:path');
 const { DataTypes } = require('sequelize');
 const app = express();
 
+// Vercel serverless support
+const vel = require('@vercel/express');
+
 // Safety check: do not allow ALLOW_UNVERIFIED_ORDERS in production
 if (process.env.NODE_ENV === 'production' && (process.env.ALLOW_UNVERIFIED_ORDERS || '').toLowerCase() === 'true') {
   console.error('ALERT: ALLOW_UNVERIFIED_ORDERS=true is not permitted in production. Disable this flag and restart.');
@@ -147,6 +150,18 @@ app.use((req, res, next) => {
 // Serve uploaded files from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Serve frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve React static files from frontend/dist
+  const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+  app.use(express.static(frontendDistPath));
+
+  // Handle React routing - serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
+
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
@@ -210,6 +225,9 @@ if (require.main === module) {
 } else {
   module.exports = { app, startServer };
 }
+
+// Vercel serverless export
+module.exports = app;
 
 // Background jobs: notification cleanup
 // Only schedule background timers when the server is started directly (not imported by tests)

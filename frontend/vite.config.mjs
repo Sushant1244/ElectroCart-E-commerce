@@ -4,6 +4,12 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Set base path for production (Vercel serves from root)
+  base: process.env.NODE_ENV === 'production' ? '/' : '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+  },
   server: {
     // Bind to IPv4 localhost to avoid IPv6-only binding issues on some macOS setups
     host: '127.0.0.1',
