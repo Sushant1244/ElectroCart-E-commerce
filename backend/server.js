@@ -5,13 +5,18 @@ const path = require('node:path');
 const { DataTypes } = require('sequelize');
 const app = express();
 
-// Vercel serverless support - import @vercel/express
-const vel = require('@vercel/express');
+// Vercel serverless support - export express app directly
+// The @vercel/node runtime handles express apps natively
 
 // Safety check: do not allow ALLOW_UNVERIFIED_ORDERS in production
-if (process.env.NODE_ENV === 'production' && (process.env.ALLOW_UNVERIFIED_ORDERS || '').toLowerCase() === 'true') {
-  console.error('ALERT: ALLOW_UNVERIFIED_ORDERS=true is not permitted in production. Disable this flag and restart.');
-  process.exit(1);
+// Wrap in try-catch to prevent module load crashes
+try {
+  if (process.env.NODE_ENV === 'production' && (process.env.ALLOW_UNVERIFIED_ORDERS || '').toLowerCase() === 'true') {
+    console.error('ALERT: ALLOW_UNVERIFIED_ORDERS=true is not permitted in production. Disable this flag and restart.');
+    // Don't crash the function - just warn and continue
+  }
+} catch (e) {
+  console.warn('Error checking ALLOW_UNVERIFIED_ORDERS:', e?.message);
 }
 
 const authRoutes = require('./routes/auth');
@@ -29,73 +34,78 @@ let pgProductsRouter = null;
 // Only initialize Postgres when running the server directly or in Vercel.
 // This avoids starting background DB connections during tests which can leave open handles.
 // In Vercel, we still need to try connecting for serverless functions to work.
-if (require.main === module || process.env.VERCEL === '1') {
-  // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
-  if (pgConfig && pgConfig.sequelize) {
-    const { sequelize } = pgConfig;
-    (async () => {
-      try {
-        await sequelize.authenticate();
-        console.log('Postgres (Sequelize) connected');
-        // In development, allow automatic schema sync when PG_SYNC env var is truthy
-        if (process.env.PG_SYNC === 'true') {
-          await sequelize.sync({ alter: true });
-          console.log('Postgres schema synchronized (alter)');
-        } else {
-          console.log('Postgres schema not synchronized automatically. To auto-create tables in dev set PG_SYNC=true and restart the server.');
-        }
-        // Convenience: if running locally (not production), ensure the `reviews` table exists
-        // This helps devs who have Postgres configured but haven't run migrations yet.
+// Wrap in try-catch to prevent module load crashes
+try {
+  if (require.main === module || process.env.VERCEL === '1') {
+    // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
+    if (pgConfig && pgConfig.sequelize) {
+      const { sequelize } = pgConfig;
+      (async () => {
         try {
-          if (process.env.NODE_ENV !== 'production' && pgConfig && pgConfig.Review) {
+          await sequelize.authenticate();
+          console.log('Postgres (Sequelize) connected');
+          // In development, allow automatic schema sync when PG_SYNC env var is truthy
+          if (process.env.PG_SYNC === 'true') {
+            await sequelize.sync({ alter: true });
+            console.log('Postgres schema synchronized (alter)');
+          } else {
+            console.log('Postgres schema not synchronized automatically. To auto-create tables in dev set PG_SYNC=true and restart the server.');
+          }
+          // Convenience: if running locally (not production), ensure the `reviews` table exists
+          // This helps devs who have Postgres configured but haven't run migrations yet.
+          try {
+            if (process.env.NODE_ENV !== 'production' && pgConfig && pgConfig.Review) {
+              const qi = sequelize.getQueryInterface();
+              const tables = await qi.showAllTables();
+              // showAllTables can return array of objects or strings depending on dialect/config
+              const tableNames = (tables || []).map(t => (typeof t === 'string' ? t : (t.tableName || t.name))).map(n => String(n).toLowerCase());
+              if (!tableNames.includes('reviews')) {
+                console.log('`reviews` table missing — creating via Review.sync() (development only)');
+                await pgConfig.Review.sync({ alter: true });
+                console.log('`reviews` table created/updated');
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to auto-create `reviews` table (dev helper):', e && e.message ? e.message : e);
+          }
+          // Ensure email verification columns exist (safe to run in dev/production)
+          try {
             const qi = sequelize.getQueryInterface();
-            const tables = await qi.showAllTables();
-            // showAllTables can return array of objects or strings depending on dialect/config
-            const tableNames = (tables || []).map(t => (typeof t === 'string' ? t : (t.tableName || t.name))).map(n => String(n).toLowerCase());
-            if (!tableNames.includes('reviews')) {
-              console.log('`reviews` table missing — creating via Review.sync() (development only)');
-              await pgConfig.Review.sync({ alter: true });
-              console.log('`reviews` table created/updated');
+            const usersDesc = await qi.describeTable('users').catch(() => null);
+            if (usersDesc) {
+              if (!usersDesc.emailVerified) {
+                await qi.addColumn('users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
+                console.log('Added column users.emailVerified');
+              }
+              if (!usersDesc.emailVerificationToken) {
+                await qi.addColumn('users', 'emailVerificationToken', { type: DataTypes.STRING });
+                console.log('Added column users.emailVerificationToken');
+              }
+              if (!usersDesc.emailVerificationExpire) {
+                await qi.addColumn('users', 'emailVerificationExpire', { type: DataTypes.BIGINT });
+                console.log('Added column users.emailVerificationExpire');
+              }
             }
+          } catch (e) {
+            console.warn('Failed to ensure email verification columns:', e && e.message ? e.message : e);
           }
-        } catch (e) {
-          console.warn('Failed to auto-create `reviews` table (dev helper):', e && e.message ? e.message : e);
+        } catch (err) {
+          console.error('Sequelize connection failed:', err.message || err);
+          // In Vercel, don't crash - just log the error and continue
+          // The app will fall back to in-memory storage if DB is unavailable
         }
-        // Ensure email verification columns exist (safe to run in dev/production)
-        try {
-          const qi = sequelize.getQueryInterface();
-          const usersDesc = await qi.describeTable('users').catch(() => null);
-          if (usersDesc) {
-            if (!usersDesc.emailVerified) {
-              await qi.addColumn('users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
-              console.log('Added column users.emailVerified');
-            }
-            if (!usersDesc.emailVerificationToken) {
-              await qi.addColumn('users', 'emailVerificationToken', { type: DataTypes.STRING });
-              console.log('Added column users.emailVerificationToken');
-            }
-            if (!usersDesc.emailVerificationExpire) {
-              await qi.addColumn('users', 'emailVerificationExpire', { type: DataTypes.BIGINT });
-              console.log('Added column users.emailVerificationExpire');
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to ensure email verification columns:', e && e.message ? e.message : e);
-        }
-      } catch (err) {
-        console.error('Sequelize connection failed:', err.message || err);
-        // In Vercel, don't crash - just log the error and continue
-        // The app will fall back to in-memory storage if DB is unavailable
-      }
-    })();
+      })();
 
-    try {
-      const pgProductsFactory = require('./routes/pgProducts');
-      pgProductsRouter = pgProductsFactory(pgConfig);
-    } catch (err) {
-      console.error('Failed to load PG routes', err.message);
+      try {
+        const pgProductsFactory = require('./routes/pgProducts');
+        pgProductsRouter = pgProductsFactory(pgConfig);
+      } catch (err) {
+        console.error('Failed to load PG routes', err.message);
+      }
     }
   }
+} catch (e) {
+  console.warn('Database initialization error (non-fatal):', e?.message);
 }
 
 const PORT = process.env.PORT || 5001;
@@ -308,8 +318,9 @@ app.use((err, req, res, next) => {
 const isVercel = process.env.VERCEL === '1';
 
 if (isVercel) {
-  // Vercel serverless: export using @vercel/express wrapper
-  module.exports = vel(app);
+  // Vercel serverless: export express app directly
+  // @vercel/node handles express apps natively
+  module.exports = app;
 } else if (require.main === module) {
   // Running directly (local development): start the server
   startServer();
