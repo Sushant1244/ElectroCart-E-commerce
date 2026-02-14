@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { app } = require('../server');
+const { server, app } = require('../server');
 
 describe('Basic API', () => {
   test('GET / returns 200 and API running text', async () => {

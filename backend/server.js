@@ -266,12 +266,13 @@ app.use((err, req, res, next) => {
 // If run directly, start the server. Otherwise export the app for tests.
 if (require.main === module) {
   startServer();
-} else {
   module.exports = { app, startServer };
+} else {
+  // For testing: create a server instance that supertest can use
+  const http = require('http');
+  const server = http.createServer(app);
+  module.exports = { app, server, startServer };
 }
-
-// Vercel serverless export
-module.exports = app;
 
 // Background jobs: notification cleanup
 // Only schedule background timers when the server is started directly (not imported by tests)
