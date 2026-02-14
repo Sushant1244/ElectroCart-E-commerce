@@ -5,7 +5,7 @@ const path = require('node:path');
 const { DataTypes } = require('sequelize');
 const app = express();
 
-// Vercel serverless support
+// Vercel serverless support - import @vercel/express
 const vel = require('@vercel/express');
 
 // Safety check: do not allow ALLOW_UNVERIFIED_ORDERS in production
@@ -26,9 +26,10 @@ const wishlistRoutes = require('./routes/wishlist');
 const cartRoutes = require('./routes/cart');
 const pgConfig = require('./config/sequelize');
 let pgProductsRouter = null;
-// Only initialize Postgres when running the server directly. This avoids
-// starting background DB connections during tests which can leave open handles.
-if (require.main === module) {
+// Only initialize Postgres when running the server directly or in Vercel.
+// This avoids starting background DB connections during tests which can leave open handles.
+// In Vercel, we still need to try connecting for serverless functions to work.
+if (require.main === module || process.env.VERCEL === '1') {
   // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
   if (pgConfig && pgConfig.sequelize) {
     const { sequelize } = pgConfig;
@@ -83,6 +84,8 @@ if (require.main === module) {
         }
       } catch (err) {
         console.error('Sequelize connection failed:', err.message || err);
+        // In Vercel, don't crash - just log the error and continue
+        // The app will fall back to in-memory storage if DB is unavailable
       }
     })();
 
@@ -301,8 +304,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err && err.message ? err.message : '' });
 });
 
-// If run directly, start the server. Otherwise export the app for tests.
-if (require.main === module) {
+// Export for Vercel serverless OR local development/testing
+const isVercel = process.env.VERCEL === '1';
+
+if (isVercel) {
+  // Vercel serverless: export using @vercel/express wrapper
+  module.exports = vel(app);
+} else if (require.main === module) {
+  // Running directly (local development): start the server
   startServer();
   module.exports = { app, startServer };
 } else {
