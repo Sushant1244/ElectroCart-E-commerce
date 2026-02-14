@@ -212,16 +212,54 @@ if (pgProductsRouter) {
 }
 
 // Serve frontend static files in production (AFTER API routes)
-if (process.env.NODE_ENV === 'production') {
-  // Serve React static files from frontend/dist
-  // Use process.cwd() to get the project root for Vercel compatibility
-  const frontendDistPath = path.join(process.cwd(), 'frontend', 'dist');
-  app.use(express.static(frontendDistPath));
+// Also serve in production-like environments (VERCEL === '1')
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
-  // Handle React routing - serve index.html for all non-API routes
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
-  });
+if (isProduction) {
+  // Serve React static files from frontend/dist
+  // Try multiple possible locations for Vercel compatibility
+  const possiblePaths = [
+    path.join(process.cwd(), 'frontend', 'dist'),
+    path.join(process.cwd(), 'dist'),
+    path.join(__dirname, '..', 'frontend', 'dist'),
+    path.join(__dirname, '..', '..', 'frontend', 'dist'),
+    path.join(__dirname, 'dist'),
+    path.join(__dirname, '..', 'dist')
+  ];
+  
+  let frontendDistPath = null;
+  let fs;
+  try {
+    fs = require('fs');
+    for (const p of possiblePaths) {
+      try {
+        if (fs.existsSync(p)) {
+          frontendDistPath = p;
+          console.log('Found frontend dist at:', p);
+          break;
+        }
+      } catch (e) {
+        // Continue to next path
+      }
+    }
+    
+    if (!frontendDistPath) {
+      console.log('Could not find frontend dist in any of these paths:', possiblePaths);
+      console.log('process.cwd():', process.cwd());
+      console.log('__dirname:', __dirname);
+    }
+  } catch (e) {
+    console.error('Error checking paths:', e);
+  }
+  
+  if (frontendDistPath) {
+    app.use(express.static(frontendDistPath));
+
+    // Handle React routing - serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
+  }
 } else {
   app.get('/', (req, res) => res.send('API running'));
 }
