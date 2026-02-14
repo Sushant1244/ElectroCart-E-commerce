@@ -609,9 +609,9 @@ body, #root, .app {
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 0.5rem;
+  text-align: center;
 }
 
-  text-align: center; /* Added text alignment for hero content */
 .promo-content p {
   font-size: 1.25rem;
   color: #64748b;
