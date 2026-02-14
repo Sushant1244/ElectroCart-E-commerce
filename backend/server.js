@@ -101,7 +101,23 @@ const PORT = process.env.PORT || 5001;
 // Enable CORS: in production use CLIENT_URL, in development allow localhost on common dev ports
 // For local debugging you can set DEV_ALLOW_ALL_ORIGINS=true in backend/.env to allow any origin
 if (process.env.NODE_ENV === 'production') {
-  app.use(cors({ origin: process.env.CLIENT_URL || 'https://your-production-client.com', credentials: true }));
+  // In Vercel monorepo, frontend and backend are on same domain, so allow request origin
+  app.use(cors({
+    origin: (origin, cb) => {
+      // Allow requests with no origin (server-to-server) or same-origin requests
+      if (!origin) return cb(null, true);
+      // Allow any origin on the same Vercel domain (including preview deployments)
+      // Also allow explicitly configured CLIENT_URL
+      const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
+      const isAllowed = allowedOrigins.some(allowed => 
+        allowed && (origin === allowed || origin.endsWith('.' + allowed) || origin.endsWith('-' + allowed))
+      ) || origin.includes('vercel.app') || origin.includes('vercel-storage.com');
+      if (isAllowed) return cb(null, true);
+      // For same-domain requests (frontend calling backend on same Vercel app)
+      return cb(null, true);
+    },
+    credentials: true
+  }));
   } else {
     if (process.env.DEV_ALLOW_ALL_ORIGINS === 'true') {
       // Allow all origins for quick local debugging (mirrors request Origin header)
@@ -150,24 +166,12 @@ app.use((req, res, next) => {
 // Serve uploaded files from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve frontend static files in production
-if (process.env.NODE_ENV === 'production') {
-  // Serve React static files from frontend/dist
-  const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
-  app.use(express.static(frontendDistPath));
-
-  // Handle React routing - serve index.html for all non-API routes
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
-  });
-}
-
+// Mount API routes BEFORE the catch-all for frontend
+// This is critical: API routes must be handled before the React router catch-all
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/analytics', analyticsRoutes);
-
-// uploads listing
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/wishlist', wishlistRoutes);
@@ -181,6 +185,18 @@ if (pgProductsRouter) {
 }
 
 app.get('/', (req, res) => res.send('API running'));
+
+// Serve frontend static files in production (AFTER API routes)
+if (process.env.NODE_ENV === 'production') {
+  // Serve React static files from frontend/dist
+  const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+  app.use(express.static(frontendDistPath));
+
+  // Handle React routing - serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // Start server with an error handler to gracefully report listen errors
 const LISTEN_HOST = process.env.LISTEN_HOST || '0.0.0.0';

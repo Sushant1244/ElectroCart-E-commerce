@@ -1,13 +1,14 @@
 import axios from 'axios';
 
-// In production, use relative paths (/api). In development, use localhost:5001
+// In production, use /api prefix. In development, use localhost:5001
 const getBaseURL = () => {
-  if (import.meta.env.VITE_API_URL) {
+  // If explicitly set, use that value (for custom API URLs)
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== '') {
     return import.meta.env.VITE_API_URL;
   }
-  // Use relative API path in production (served from same origin)
+  // Use /api prefix in production (served from same origin)
   if (import.meta.env.MODE === 'production') {
-    return '';
+    return '/api';
   }
   return 'http://localhost:5001';
 };
