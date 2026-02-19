@@ -11,7 +11,7 @@ const seed = async () => {
 
   const admin = new User({
     name: 'Admin',
-    email: 'admin@demo.com',
+    email: 'admin@electrocart.com',
     password: await bcrypt.hash('admin123', 10),
     isAdmin: true
   });

@@ -204,6 +204,7 @@
 .admin-header-actions { display:flex; gap:0.75rem; }
 .btn-outline { padding:0.5rem 0.75rem; border-radius:8px; border:1px solid #e6edf7; background:white; color:var(--text); text-decoration:none; }
 .btn-primary { padding:0.5rem 0.75rem; border-radius:8px; background:linear-gradient(180deg,#7c3aed,var(--accent-strong)); color:white; text-decoration:none; }
+.btn-secondary { padding:0.5rem 0.75rem; border-radius:8px; background:#2563eb; color:white; text-decoration:none; }
 
 /* Responsive adjustments */
 @media (max-width: 1100px) {

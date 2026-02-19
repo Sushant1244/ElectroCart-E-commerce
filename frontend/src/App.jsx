@@ -24,6 +24,9 @@ import AdminAddProduct from './pages/admin/AdminAddProduct';
 import AdminEditProduct from './pages/admin/AdminEditProduct';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCreateOrder from './pages/admin/AdminCreateOrder';
+import AdminAddBlog from './pages/admin/AdminAddBlog';
+import AdminEditBlog from './pages/admin/AdminEditBlog';
+import AdminBlogs from './pages/admin/AdminBlogs';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { setAuthToken } from './api/api';
@@ -72,7 +75,9 @@ function App(){
   const requireVerified = (component) => {
     // If not authenticated, redirect to login first
     if (!user) return <Navigate to="/login" />;
-    // If authenticated but email not verified, redirect to verify-email
+    // Admins don't need email verification - they have special credentials
+    if (user && user.isAdmin === true) return component;
+    // For regular users, check if email is verified
     if (user && user.emailVerified === false) return <Navigate to="/verify-email" />;
     return component;
   };
@@ -102,6 +107,9 @@ function App(){
           <Route path="/admin/edit/:id" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminEditProduct /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/orders" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminOrders /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/create-order" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminCreateOrder /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/blogs" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminBlogs /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/add-blog" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminAddBlog /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/edit-blog/:id" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminEditBlog /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/orders" element={ requireVerified(<Orders />) } />
           <Route path="/wishlist" element={ requireVerified(<ErrorBoundary><Wishlist /></ErrorBoundary>) } />
           <Route path="/verify-email" element={<VerifyEmail user={user} onVerified={(u) => { setUser(u); localStorage.setItem('user', JSON.stringify(u)); }} />} />

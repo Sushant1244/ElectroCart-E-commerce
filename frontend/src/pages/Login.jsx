@@ -19,9 +19,9 @@ export default function Login({ onLogin }){
     try {
       const res = await API.post('/auth/login', { email, password });
       
-      // Check if email is verified
+      // Check if email is verified (skip for admin users)
       const userData = res.data.user;
-      if (userData.emailVerified === false) {
+      if (userData.isAdmin !== true && userData.emailVerified === false) {
         // Store user data temporarily and redirect to verify email
         localStorage.setItem('user', JSON.stringify({ 
           ...userData, 

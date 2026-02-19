@@ -536,6 +536,7 @@ export default function AdminDashboard() {
             <div style={{flex:1}} />
             <button className="btn-outline">Export</button>
             <Link to="/admin/add" className="btn-primary">+ Add Product</Link>
+            <Link to="/admin/blogs" className="btn-secondary">Manage Blogs</Link>
           </div>
 
           <section className="products-grid v2">

@@ -27,7 +27,7 @@ async function run() {
     await sequelize.authenticate();
 
     // ensure admin user has isAdmin true
-    const admin = await User.findOne({ where: { email: 'admin@example.com' } });
+    const admin = await User.findOne({ where: { email: 'admin@electrocart.com' } });
     if (admin && !admin.isAdmin) {
       await admin.update({ isAdmin: true });
       console.log('Admin user updated to isAdmin=true');

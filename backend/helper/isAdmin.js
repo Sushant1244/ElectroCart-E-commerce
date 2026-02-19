@@ -1,6 +1,6 @@
 const isAdmin = (req, res, next) => {
     console.log(req.user)
-    if (req.user && req.user.role === 'admin') {
+    if (req.user && (req.user.role === 'admin' || req.user.isAdmin === true)) {
         return next();
     }
     return res.status(403).json({ success: false,

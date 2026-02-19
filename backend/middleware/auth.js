@@ -19,6 +19,10 @@ exports.authMiddleware = async (req, res, next) => {
       if (u) { delete u.password; delete u.passwordHash; }
       req.user = u;
     }
+    // Ensure isAdmin is available on the user object
+    if (req.user && req.user.isAdmin === undefined) {
+      req.user.isAdmin = req.user.isAdmin || false;
+    }
   if (!req.user) return res.status(401).json({ message: 'User not found' });
   next();
   } catch (err) {
