@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const blogController = require('../controllers/blogController');
-const { isAdmin } = require('../middleware/auth');
+const isAdmin = require('../helper/isAdmin');
 
 // Public routes
 router.get('/', blogController.getAllBlogs);

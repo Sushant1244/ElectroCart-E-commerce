@@ -9,6 +9,7 @@ export default function Header({ user, onLogout }) {
   const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   React.useEffect(() => {
     const updateCartCount = () => {
@@ -139,8 +140,101 @@ export default function Header({ user, onLogout }) {
               </Link>
               <Link to="/cart" className="icon-btn cart-icon" aria-label={`Cart with ${cartCount} items`}>🛒{cartCount > 0 && <span className="cart-badge">{cartCount}</span>}</Link>
             </div>
+            {/* Hamburger Menu Button */}
+            <button 
+              className={`hamburger-menu ${mobileMenuOpen ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
         </div>
       </header>
+
+      {/* Mobile Navigation Overlay */}
+      <div 
+        className={`mobile-nav-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Mobile Navigation Menu */}
+      <div className={`mobile-nav-menu ${mobileMenuOpen ? 'active' : ''}`}>
+        <div className="mobile-search">
+          <input
+            aria-label="Search products"
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => { 
+              if (e.key === 'Enter') { 
+                navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+                setMobileMenuOpen(false);
+              } 
+            }}
+          />
+          <button onClick={() => {
+            navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+            setMobileMenuOpen(false);
+          }}>🔍</button>
+        </div>
+        <nav className="mobile-nav-links">
+          <Link 
+            to="/" 
+            onClick={() => setMobileMenuOpen(false)}
+            aria-current={location.pathname === '/' && !location.hash ? 'page' : undefined}
+          >HOME</Link>
+          <Link 
+            to="/#products" 
+            onClick={() => setMobileMenuOpen(false)}
+            aria-current={(location.hash && location.hash.includes('products')) || (location.pathname === '/' && (new URLSearchParams(location.search).has('category'))) ? 'page' : undefined}
+          >ELECTRONICS</Link>
+          <Link 
+            to="/blog" 
+            onClick={() => setMobileMenuOpen(false)}
+            aria-current={location.pathname === '/blog' ? 'page' : undefined}
+          >BLOG</Link>
+          <Link 
+            to="/pages" 
+            onClick={() => setMobileMenuOpen(false)}
+            aria-current={location.pathname === '/pages' ? 'page' : undefined}
+          >PAGES</Link>
+          <Link 
+            to="/contact" 
+            onClick={() => setMobileMenuOpen(false)}
+            aria-current={location.pathname === '/contact' ? 'page' : undefined}
+          >CONTACT</Link>
+          
+          {/* User Section for Mobile */}
+          <div className="mobile-user-section">
+            {user ? (
+              <>
+                <Link to="/orders" onClick={() => setMobileMenuOpen(false)}>My Orders</Link>
+                {user.isAdmin === true && <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>Admin Panel</Link>}
+                <button className="link-btn" onClick={() => { onLogout(); navigate('/'); setMobileMenuOpen(false); }}>Logout</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+                <Link to="/register" onClick={() => setMobileMenuOpen(false)}>Sign Up</Link>
+              </>
+            )}
+          </div>
+        </nav>
+        <div className="mobile-header-actions">
+          <Link to="/wishlist" className="icon-btn wishlist-icon" onClick={() => setMobileMenuOpen(false)}>
+            <span className="heart-glyph" aria-hidden>♥</span>
+            {wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}
+            <span style={{marginLeft: '8px'}}>Wishlist</span>
+          </Link>
+          <Link to="/cart" className="icon-btn cart-icon" onClick={() => setMobileMenuOpen(false)}>
+            🛒 Cart
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+          </Link>
+        </div>
+      </div>
     </>
   );
 }
