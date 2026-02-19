@@ -28,7 +28,9 @@ function wrapHtml(title, bodyHtml) {
 
 function orderPlacedHtml({ order, clientUrl }) {
   const orderId = order.id || order._id || '';
-  const itemsHtml = (order.items || []).map(it => `<li>${(it.name || it.product?.name || '')} — Qty: ${it.quantity || 1} — Rs ${it.price || ''}</li>`).join('');
+  // Support both order.items and order.orderItems
+  const items = order.items || order.orderItems || [];
+  const itemsHtml = items.map(it => `<li>${(it.name || it.product?.name || '')} — Qty: ${it.quantity || 1} — Rs ${it.price || ''}</li>`).join('');
   const viewUrl = (clientUrl || '') + '/orders';
   const html = `
     <h2 style="margin-top:0;color:#0f172a">Thanks — your order is confirmed</h2>
@@ -36,6 +38,8 @@ function orderPlacedHtml({ order, clientUrl }) {
     <h4 style="margin-bottom:6px">Order summary</h4>
     <ul style="padding-left:18px">${itemsHtml}</ul>
     <p><strong>Total:</strong> Rs ${order.totalPrice || order.total || 0}</p>
+    <p><strong>Shipping Address:</strong><br/>${(order.shippingAddress?.fullName || order.shippingAddress?.name || '')}<br/>${(order.shippingAddress?.line1 || order.shippingAddress?.address || '')}<br/>${(order.shippingAddress?.city || '')}${order.shippingAddress?.city && order.shippingAddress?.country ? ', ' : ''}${order.shippingAddress?.country || ''}</p>
+    <p><strong>Payment Method:</strong> ${order.paymentMethod || 'COD'}</p>
     <p style="margin-top:18px"><a href="${viewUrl}" style="display:inline-block;background:#2563eb;color:white;padding:10px 14px;border-radius:6px;text-decoration:none">View your orders</a></p>
   `;
   return wrapHtml('Order confirmation — ElectroCart', html);
