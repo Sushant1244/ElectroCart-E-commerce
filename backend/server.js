@@ -20,6 +20,7 @@ try {
 }
 
 const authRoutes = require('./routes/auth');
+const debugRoutes = require('./routes/debug');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
 const analyticsRoutes = require('./routes/analytics');
@@ -210,6 +211,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Mount API routes BEFORE the catch-all for frontend
 // This is critical: API routes must be handled before the React router catch-all
 app.use('/api/auth', authRoutes);
+app.use('/api/debug', debugRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/analytics', analyticsRoutes);
