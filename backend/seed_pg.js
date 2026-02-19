@@ -15,7 +15,7 @@ async function seed() {
     await sequelize.sync({ force: true });
 
     // create a demo user
-  await User.create({ name: 'Admin', email: 'admin@example.com', passwordHash: 'seeded' });
+  await User.create({ name: 'Admin', email: 'admin@electrocart.com', passwordHash: 'seeded' });
 
     const products = [
       {

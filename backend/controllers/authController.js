@@ -63,10 +63,16 @@ exports.register = async (req, res) => {
       if (exists) return res.status(400).json({ message: 'Email exists' });
 
       const hashed = await bcrypt.hash(password, 10);
-      const createData = { name, email, password: hashed, isAdmin: !!isAdmin };
+      const isAdminUser = !!isAdmin;
+      const createData = { name, email, password: hashed, isAdmin: isAdminUser };
       const user = await adapter.User.create(createData);
 
-  // Generate secure 6-digit OTP and store hashed token + expiry on user
+      // Admins don't need email verification
+      if (isAdminUser) {
+        return res.json({ message: 'Admin registered successfully', email: user.email });
+      }
+
+      // Generate secure 6-digit OTP and store hashed token + expiry on user
   const otpInt = crypto.randomInt(0, 1000000);
   const otp = String(otpInt).padStart(6, '0');
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
@@ -148,7 +154,13 @@ exports.register = async (req, res) => {
     const existing = await findUserByEmail(email);
     if (existing) return res.status(400).json({ message: 'Email exists' });
     const user = await createInMemoryUser({ name, email, password, isAdmin });
-  const otpInt = crypto.randomInt(0, 1000000);
+    
+    // Admins don't need email verification
+    if (isAdmin) {
+      return res.json({ message: 'Admin registered successfully', email: user.email });
+    }
+    
+    const otpInt = crypto.randomInt(0, 1000000);
   const otp = String(otpInt).padStart(6, '0');
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
     const expireAt = Date.now() + (10 * 60 * 1000);
@@ -342,14 +354,16 @@ exports.login = async (req, res) => {
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
       const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      // Admins don't need email verification
+      const isAdminUser = user.isAdmin === true;
       return res.json({ 
         token, 
         user: { 
           id: user.id, 
           email: user.email, 
           name: user.name, 
-          isAdmin: user.isAdmin,
-          emailVerified: user.emailVerified || false
+          isAdmin: isAdminUser,
+          emailVerified: isAdminUser ? true : (user.emailVerified || false)
         } 
       });
     } catch (e) {
@@ -380,14 +394,16 @@ exports.login = async (req, res) => {
   if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
 
   const token = safeSign({ id: user._id || user.id });
+  // Admins don't need email verification
+  const isAdminUser = user.isAdmin === true;
   res.json({ 
     token, 
     user: { 
       id: user._id || user.id, 
       email: user.email, 
       name: user.name, 
-      isAdmin: user.isAdmin,
-      emailVerified: user.emailVerified || false
+      isAdmin: isAdminUser,
+      emailVerified: isAdminUser ? true : (user.emailVerified || false)
     } 
   });
   } catch (e) {

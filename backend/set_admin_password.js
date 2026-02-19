@@ -11,7 +11,7 @@ if (!POSTGRES_URL || !sequelize) {
 async function run() {
   try {
     await sequelize.authenticate();
-    const user = await User.findOne({ where: { email: 'admin@example.com' } });
+    const user = await User.findOne({ where: { email: 'admin@electrocart.com' } });
     if (!user) {
       console.error('Admin user not found (admin@example.com)');
       process.exit(1);
