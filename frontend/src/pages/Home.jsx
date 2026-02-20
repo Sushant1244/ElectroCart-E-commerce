@@ -93,7 +93,7 @@ export default function Home(){
       title: 'New Arrivals',
       subtitle: 'Latest Tech Collection',
       description: 'Explore our newest products from top brands. Be the first to experience innovation.',
-      image: '/uploads/Iphone banner.png',
+      backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       badge: 'NEW',
       ctaText: 'Explore',
       ctaLink: '/products?category=new',
