@@ -6,6 +6,7 @@ export default function Pages(){
       <h1>Pages</h1>
       <p>Utility pages and helpful links.</p>
       <ul>
+        <li><a href="/new">New</a></li>
         <li><a href="/contact">Contact</a></li>
         <li><a href="/">Home</a></li>
       </ul>

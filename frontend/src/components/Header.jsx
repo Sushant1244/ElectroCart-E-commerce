@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import NotificationDropdown from './NotificationDropdown';
+import API from '../api/api';
 
 export default function Header({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [suggestions, setSuggestions] = useState({ products: [], categories: [] });
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const searchRef = useRef(null);
 
   React.useEffect(() => {
     const updateCartCount = () => {
@@ -46,6 +50,54 @@ export default function Header({ user, onLogout }) {
       clearInterval(interval);
     };
   }, []);
+
+  // Fetch auto-suggestions when search term changes
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (searchTerm.trim().length < 2) {
+        setSuggestions({ products: [], categories: [] });
+        return;
+      }
+      
+      try {
+        const res = await API.get(`/products/suggestions?q=${encodeURIComponent(searchTerm)}&suggestions=true`);
+        if (res.data) {
+          setSuggestions({
+            products: res.data.products || [],
+            categories: res.data.categories || []
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch suggestions', e);
+      }
+    };
+    
+    const timeoutId = setTimeout(fetchSuggestions, 200);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault();
+    navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+    setShowSuggestions(false);
+  };
+
+  const handleSuggestionClick = (slug) => {
+    navigate(`/product/${slug}`);
+    setShowSuggestions(false);
+    setSearchTerm('');
+  };
 
   return (
     <>
@@ -119,19 +171,76 @@ export default function Header({ user, onLogout }) {
               <Link to="/#products" aria-current={(location.hash && location.hash.includes('products')) || (location.pathname === '/' && (new URLSearchParams(location.search).has('category'))) ? 'page' : undefined}>ELECTRONICS</Link>
               <Link to="/blog" aria-current={location.pathname === '/blog' ? 'page' : undefined}>BLOG</Link>
               <Link to="/pages" aria-current={location.pathname === '/pages' ? 'page' : undefined}>PAGES</Link>
+              <Link to="/faq" aria-current={location.pathname === '/faq' ? 'page' : undefined}>FAQ</Link>
               <Link to="/contact" aria-current={location.pathname === '/contact' ? 'page' : undefined}>CONTACT</Link>
             </nav>
             <div className="header-actions">
-              <div className="search-box">
-                <input
-                  aria-label="Search products"
-                  className="search-input"
-                  placeholder="Search products, brands..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`); } }}
-                />
-                {/* search button removed per request; Enter key in input still triggers search */}
+              <div className="search-box" ref={searchRef}>
+                <form onSubmit={handleSearchSubmit}>
+                  <input
+                    aria-label="Search products"
+                    className="search-input"
+                    placeholder="Search products, brands..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { handleSearchSubmit(e); } }}
+                  />
+                </form>
+                {/* Auto-suggestions dropdown */}
+                {showSuggestions && (suggestions.products.length > 0 || suggestions.categories.length > 0) && (
+                  <div className="suggestions-dropdown">
+                    {suggestions.categories.length > 0 && (
+                      <div className="suggestion-section">
+                        <div className="suggestion-header">Categories</div>
+                        {suggestions.categories.map((cat, idx) => (
+                          <div
+                            key={`cat-${idx}`}
+                            className="suggestion-item category"
+                            onClick={() => {
+                              navigate(`/search?category=${encodeURIComponent(cat.name)}`);
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            <span className="suggestion-icon">📁</span>
+                            {cat.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {suggestions.products.length > 0 && (
+                      <div className="suggestion-section">
+                        <div className="suggestion-header">Products</div>
+                        {suggestions.products.map((product) => (
+                          <div
+                            key={product._id}
+                            className="suggestion-item product"
+                            onClick={() => handleSuggestionClick(product.slug)}
+                          >
+                            {product.image && (
+                              <img
+                                src={product.image}
+                                alt=""
+                                className="suggestion-thumb"
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            )}
+                            <div className="suggestion-info">
+                              <div className="suggestion-name">{product.name}</div>
+                              <div className="suggestion-price">Rs. {product.price?.toLocaleString()}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="suggestion-footer" onClick={handleSearchSubmit}>
+                      See all results for "{searchTerm}"
+                    </div>
+                  </div>
+                )}
               </div>
               <NotificationDropdown />
               <Link to="/wishlist" className="icon-btn wishlist-icon mr-8" aria-label={`Wishlist with ${wishlistCount} items`}>

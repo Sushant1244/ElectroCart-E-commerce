@@ -32,6 +32,7 @@ const wishlistRoutes = require('./routes/wishlist');
 const cartRoutes = require('./routes/cart');
 const blogRoutes = require('./routes/blogs');
 const pgConfig = require('./config/sequelize');
+const promoRoutes = require('./routes/promo');
 let pgProductsRouter = null;
 // Only initialize Postgres when running the server directly or in Vercel.
 // This avoids starting background DB connections during tests which can leave open handles.
@@ -222,6 +223,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/promo', promoRoutes);
 
 // If PG is enabled, mount PG product routes under /api/pg/products
 if (pgProductsRouter) {

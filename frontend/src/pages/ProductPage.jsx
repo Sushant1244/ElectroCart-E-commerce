@@ -44,6 +44,8 @@ export default function ProductPage() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [formRating, setFormRating] = useState(0);
   const [formComment, setFormComment] = useState('');
+  const [formPhotos, setFormPhotos] = useState([]);
+  const [submittingReview, setSubmittingReview] = useState(false);
   useEffect(() => {
     if (!product || !product.category) return;
     let c = product.category;
@@ -238,6 +240,14 @@ export default function ProductPage() {
               <div className="review-card" key={i}>
                 <div className="rev-badge">{r.rating} ★</div>
                 <div className="rev-text">{r.comment || 'No comment'}</div>
+                {/* Display review photos if available */}
+                {r.photos && r.photos.length > 0 && (
+                  <div className="review-photos">
+                    {r.photos.map((photo, idx) => (
+                      <img key={idx} src={photo} alt={`Review ${i + 1} photo ${idx + 1}`} className="review-photo" />
+                    ))}
+                  </div>
+                )}
                 <div className="rev-user">{r.user?.name || r.user?.email || 'User'} • {new Date(r.createdAt).toLocaleDateString()}</div>
               </div>
             ))}
@@ -431,27 +441,39 @@ export default function ProductPage() {
       </div>
 
       {showReviewForm && (
-        <form className="review-form" onSubmit={async (e) => {
+        <form className="review-form" encType="multipart/form-data" onSubmit={async (e) => {
           e.preventDefault();
           if (!formRating) { alert('Please select a rating'); return; }
           // ensure user is logged-in before posting
           const token = localStorage.getItem('token');
           if (!token) { navigate('/login'); return; }
+          setSubmittingReview(true);
           try {
-            const payload = { rating: formRating, comment: formComment };
-            const res = await API.post(`/products/${product._id || product.id}/reviews`, payload);
+            // Use FormData to support file uploads
+            const formData = new FormData();
+            formData.append('rating', formRating);
+            formData.append('comment', formComment);
+            formPhotos.forEach(photo => {
+              formData.append('photos', photo);
+            });
+            
+            const res = await API.post(`/products/${product._id || product.id}/reviews`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
             // refresh reviews and product aggregates
             await fetchReviews(1);
             // refresh product aggregate from server response if present
             if (res && res.data && res.data.rating) setProduct(res.data);
             setShowReviewForm(false);
-            setFormComment(''); setFormRating(0);
+            setFormComment(''); setFormRating(0); setFormPhotos([]);
           } catch (err) {
             const status = err?.response?.status;
             const serverMsg = err?.response?.data?.message || err?.message || 'Failed to submit review';
             if (status === 401) { navigate('/login'); return; }
             console.error('Review submit failed', serverMsg, err);
             alert(serverMsg);
+          } finally {
+            setSubmittingReview(false);
           }
           }}>
           <div className="review-form-stars">
@@ -460,9 +482,45 @@ export default function ProductPage() {
             ))}
           </div>
           <textarea className="review-comment" placeholder="Write your review (optional)" value={formComment} onChange={e => setFormComment(e.target.value)} />
+          
+          {/* Photo upload section */}
+          <div className="review-photo-upload">
+            <label className="photo-upload-label">
+              <span>Add Photos (optional)</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length + formPhotos.length > 5) {
+                    alert('Maximum 5 photos allowed');
+                    return;
+                  }
+                  setFormPhotos(prev => [...prev, ...files]);
+                }}
+                style={{ display: 'none' }}
+              />
+            </label>
+            {formPhotos.length > 0 && (
+              <div className="selected-photos">
+                {formPhotos.map((photo, idx) => (
+                  <div key={idx} className="photo-preview">
+                    <img src={URL.createObjectURL(photo)} alt={`Preview ${idx + 1}`} />
+                    <button type="button" className="remove-photo" onClick={() => {
+                      setFormPhotos(prev => prev.filter((_, i) => i !== idx));
+                    }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
           <div className="review-form-actions">
-            <button className="btn btn-primary" type="submit">Submit review</button>
-            <button type="button" className="btn" onClick={() => { setShowReviewForm(false); setFormComment(''); setFormRating(0); }}>Cancel</button>
+            <button className="btn btn-primary" type="submit" disabled={submittingReview}>
+              {submittingReview ? 'Submitting...' : 'Submit review'}
+            </button>
+            <button type="button" className="btn" onClick={() => { setShowReviewForm(false); setFormComment(''); setFormRating(0); setFormPhotos([]); }}>Cancel</button>
           </div>
         </form>
       )}
