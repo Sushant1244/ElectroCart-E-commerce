@@ -27,8 +27,11 @@ import AdminCreateOrder from './pages/admin/AdminCreateOrder';
 import AdminAddBlog from './pages/admin/AdminAddBlog';
 import AdminEditBlog from './pages/admin/AdminEditBlog';
 import AdminBlogs from './pages/admin/AdminBlogs';
+import FAQ from './pages/FAQ';
+import New from './pages/New';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import Chatbot from './components/Chatbot';
 import { setAuthToken } from './api/api';
 
 function App(){
@@ -114,9 +117,12 @@ function App(){
           <Route path="/wishlist" element={ requireVerified(<ErrorBoundary><Wishlist /></ErrorBoundary>) } />
           <Route path="/verify-email" element={<VerifyEmail user={user} onVerified={(u) => { setUser(u); localStorage.setItem('user', JSON.stringify(u)); }} />} />
           <Route path="/contact" element={<div className="container"><h1>Contact Us</h1><p>Email: info@elecrocart.com | Phone: +1234567890</p></div>} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/new" element={<New />} />
         </Routes>
       </main>
       <Footer />
+      <Chatbot />
     </div>
   );
 }

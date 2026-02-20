@@ -11,6 +11,21 @@ export default function Cart() {
       return [];
     }
   });
+  
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('appliedPromo') || 'null');
+    } catch (e) {
+      return null;
+    }
+  });
+  const [promoError, setPromoError] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  
+  // Inventory validation
+  const [inventoryStatus, setInventoryStatus] = useState({});
 
   // fallback map for known demo slugs
   const SLUG_FALLBACK = {
@@ -87,8 +102,71 @@ export default function Cart() {
       // ignore
     }
   }, [cart]);
+  
+  // Check inventory when cart changes
+  useEffect(() => {
+    const checkInventory = async () => {
+      const items = cart.map(item => ({
+        productId: item.product || item._id,
+        quantity: item.quantity || 1
+      }));
+      
+      if (items.length === 0) return;
+      
+      try {
+        const res = await API.post('/products/check-inventory', { items });
+        if (res.data && res.data.items) {
+          const status = {};
+          res.data.items.forEach(item => {
+            status[item.productId] = item;
+          });
+          setInventoryStatus(status);
+        }
+      } catch (e) {
+        console.error('Inventory check failed', e);
+      }
+    };
+    
+    checkInventory();
+  }, [cart]);
 
-  const total = cart.reduce((s, c) => s + (Number(c.price) || 0) * (Number(c.quantity) || 1), 0);
+  // Save applied promo to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('appliedPromo', JSON.stringify(appliedPromo));
+    } catch (e) {}
+  }, [appliedPromo]);
+
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError('');
+    
+    try {
+      const res = await API.post('/promo/validate', { 
+        code: promoCode, 
+        orderAmount: subtotal 
+      });
+      
+      if (res.data && res.data.valid) {
+        setAppliedPromo(res.data);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Invalid promo code';
+      setPromoError(msg);
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+  };
+
+  const subtotal = cart.reduce((s, c) => s + (Number(c.price) || 0) * (Number(c.quantity) || 1), 0);
+  const discount = appliedPromo?.discount || 0;
+  const total = subtotal - discount;
 
   const navigate = useNavigate();
 
@@ -170,14 +248,23 @@ export default function Cart() {
                       type="number"
                       value={c.quantity || 1}
                       min="1"
+                      max={inventoryStatus[c.product || c._id]?.availableQty || 99}
                       onChange={(e) => {
                         const q = Number(e.target.value);
+                        const stockInfo = inventoryStatus[c.product || c._id];
+                        if (stockInfo && !stockInfo.available) {
+                          alert(stockInfo.message || 'Item not available in requested quantity');
+                          return;
+                        }
                         const newCart = [...cart];
                         newCart[i].quantity = q;
                         setCart(newCart);
                       }}
                     />
                   </label>
+                  {inventoryStatus[c.product || c._id] && !inventoryStatus[c.product || c._id].available && (
+                    <p className="stock-warning">{inventoryStatus[c.product || c._id].message}</p>
+                  )}
                   <p className="item-total">Rs {(c.price * (c.quantity || 1)).toFixed(2)}</p>
                   <button onClick={() => removeItem(i)} className="btn-remove">Remove</button>
                 </div>
@@ -185,7 +272,57 @@ export default function Cart() {
             ))}
           </div>
           <div className="cart-summary">
-            <h3>Total: Rs {total.toFixed(2)}</h3>
+            <h3>Order Summary</h3>
+            
+            {/* Promo Code Section */}
+            {!appliedPromo ? (
+              <div className="promo-section">
+                <div className="promo-input-group">
+                  <input
+                    type="text"
+                    placeholder="Enter promo code"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    className="promo-input"
+                  />
+                  <button 
+                    onClick={applyPromoCode} 
+                    className="promo-btn"
+                    disabled={promoLoading || !promoCode.trim()}
+                  >
+                    {promoLoading ? 'Applying...' : 'Apply'}
+                  </button>
+                </div>
+                {promoError && <p className="promo-error">{promoError}</p>}
+                <p className="promo-hint">Try: WELCOME10, SAVE20, or FLAT500</p>
+              </div>
+            ) : (
+              <div className="applied-promo">
+                <div className="promo-success">
+                  <span className="promo-icon">✓</span>
+                  <span>{appliedPromo.code} - {appliedPromo.description}</span>
+                </div>
+                <button onClick={removePromo} className="remove-promo">Remove</button>
+              </div>
+            )}
+            
+            <div className="summary-lines">
+              <div className="summary-line">
+                <span>Subtotal</span>
+                <span>Rs {subtotal.toFixed(2)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="summary-line discount">
+                  <span>Discount</span>
+                  <span>- Rs {discount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="summary-line total">
+                <span>Total</span>
+                <span>Rs {total.toFixed(2)}</span>
+              </div>
+            </div>
+            
             <button onClick={checkout} className="btn-checkout">Proceed to Checkout</button>
           </div>
         </>

@@ -3,7 +3,8 @@ const router = express.Router();
 const multer = require('multer');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const {
-  createProduct, updateProduct, deleteProduct, getProducts, getProductBySlug, getProductById
+  createProduct, updateProduct, deleteProduct, getProducts, getProductBySlug, getProductById,
+  advancedSearch, getRelatedProducts, checkInventory, addReview, listReviews
 } = require('../controllers/productController');
 
 const storage = multer.diskStorage({
@@ -11,6 +12,16 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) { cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g,'_')); }
 });
 const upload = multer({ storage });
+
+// Advanced search with filters, sorting, pagination, and auto-suggestions
+router.get('/search', advancedSearch);
+router.get('/suggestions', advancedSearch);
+
+// Get related products
+router.get('/related/:id', getRelatedProducts);
+
+// Check inventory availability
+router.post('/check-inventory', checkInventory);
 
 router.get('/', getProducts);
 router.get('/by-id/:id', getProductById);
@@ -26,7 +37,8 @@ router.get('/:id/reviews', async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 
-router.post('/:id/reviews', authMiddleware, async (req, res, next) => {
+// Add review with optional photo uploads
+router.post('/:id/reviews', authMiddleware, upload.array('photos', 5), async (req, res, next) => {
   try {
     const productController = require('../controllers/productController');
     if (typeof productController.addReview === 'function') return productController.addReview(req, res, next);

@@ -5,6 +5,242 @@ const path = require('path');
 const { listProducts: listInMemoryProducts, findBySlug: findInMemoryBySlug, findById: findInMemoryById } = require('../utils/inMemoryProducts');
 const slugify = require('slugify');
 
+// Advanced product search with filters, sorting, pagination, and auto-suggestions
+exports.advancedSearch = async (req, res) => {
+  try {
+    const {
+      q, // search query
+      category,
+      minPrice,
+      maxPrice,
+      rating,
+      inStock,
+      featured,
+      sortBy, // price-asc, price-desc, rating-desc, newest, name-asc, name-desc
+      page = 1,
+      limit = 20,
+      suggestions // if true, return only auto-suggestions
+    } = req.query;
+
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Math.min(50, Number(limit) || 20));
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build query object
+    const query = {};
+    if (category) query.category = category;
+    if (featured === 'true' || featured === true) query.featured = true;
+    if (inStock === 'true' || inStock === true) {
+      query.countInStock = { $gt: 0 };
+    }
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+    if (rating) query.rating = { $gte: Number(rating) };
+
+    let allProducts = [];
+    let productsWithQuery = [];
+
+    // Try adapter-backed DB read first
+    try {
+      if (adapter.Product && typeof adapter.Product.find === 'function') {
+        allProducts = await adapter.Product.find(query);
+      } else {
+        allProducts = listInMemoryProducts({});
+      }
+    } catch (err) {
+      console.warn('adapter.Product.find failed, falling back to in-memory products', err?.message);
+      allProducts = listInMemoryProducts({});
+    }
+
+    // Apply search query filter (case-insensitive)
+    if (q && q.trim()) {
+      const searchTerm = q.trim().toLowerCase();
+      productsWithQuery = allProducts.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const cat = (p.category || '').toLowerCase();
+        return name.includes(searchTerm) || desc.includes(searchTerm) || cat.includes(searchTerm);
+      });
+    } else {
+      productsWithQuery = allProducts;
+    }
+
+    // If suggestions mode, return only product names/categories for auto-complete
+    if (suggestions === 'true' || suggestions === true) {
+      const suggestionProducts = productsWithQuery.slice(0, 10);
+      const productSuggestions = suggestionProducts.map(p => ({
+        _id: p._id || p.id,
+        name: p.name,
+        slug: p.slug,
+        category: p.category,
+        price: p.price,
+        image: p.images?.[0] || null
+      }));
+      
+      // Also get category suggestions
+      const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+      const categorySuggestions = categories
+        .filter(c => c.toLowerCase().includes((q || '').toLowerCase()))
+        .slice(0, 5)
+        .map(c => ({ type: 'category', name: c }));
+
+      return res.json({
+        products: productSuggestions,
+        categories: categorySuggestions
+      });
+    }
+
+    // Apply sorting
+    if (sortBy) {
+      switch (sortBy) {
+        case 'price-asc':
+          productsWithQuery.sort((a, b) => (a.price || 0) - (b.price || 0));
+          break;
+        case 'price-desc':
+          productsWithQuery.sort((a, b) => (b.price || 0) - (a.price || 0));
+          break;
+        case 'rating-desc':
+          productsWithQuery.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          break;
+        case 'newest':
+          productsWithQuery.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+          break;
+        case 'name-asc':
+          productsWithQuery.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          break;
+        case 'name-desc':
+          productsWithQuery.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Get unique categories for filter sidebar
+    const availableCategories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+    
+    // Get price range
+    const prices = allProducts.map(p => p.price).filter(Boolean);
+    const priceRange = {
+      min: prices.length ? Math.min(...prices) : 0,
+      max: prices.length ? Math.max(...prices) : 0
+    };
+
+    // Apply pagination
+    const total = productsWithQuery.length;
+    const paginatedProducts = productsWithQuery.slice(offset, offset + limitNum);
+
+    res.json({
+      products: paginatedProducts,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      },
+      filters: {
+        categories: availableCategories,
+        priceRange,
+        ratings: [5, 4, 3, 2, 1]
+      }
+    });
+  } catch (e) {
+    console.error('advancedSearch error:', e?.message);
+    res.status(500).json({ message: e?.message || 'Search failed' });
+  }
+};
+
+// Get related products based on category
+exports.getRelatedProducts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 4 } = req.query;
+
+    // Get the current product
+    const product = await adapter.Product.findById(id);
+    if (!product) {
+      // Try in-memory fallback
+      const inMemoryProduct = findInMemoryById(id);
+      if (!inMemoryProduct) return res.status(404).json({ message: 'Product not found' });
+      
+      const related = listInMemoryProducts({ category: inMemoryProduct.category })
+        .filter(p => p._id !== inMemoryProduct._id && p.id !== inMemoryProduct.id)
+        .slice(0, Number(limit));
+      return res.json(related);
+    }
+
+    // Find related products in the same category, excluding current product
+    let related = [];
+    try {
+      if (adapter.Product && typeof adapter.Product.find === 'function') {
+        related = await adapter.Product.find({ category: product.category });
+      } else {
+        related = listInMemoryProducts({ category: product.category });
+      }
+    } catch (err) {
+      related = listInMemoryProducts({ category: product.category });
+    }
+
+    // Filter out current product and limit
+    const filtered = (related || [])
+      .filter(p => String(p._id || p.id) !== String(id))
+      .slice(0, Number(limit));
+
+    res.json(filtered);
+  } catch (e) {
+    console.error('getRelatedProducts error:', e?.message);
+    res.status(500).json({ message: e?.message || 'Failed to get related products' });
+  }
+};
+
+// Check inventory availability for multiple products
+exports.checkInventory = async (req, res) => {
+  try {
+    const { items } = req.body; // Array of { productId, quantity }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Items array required' });
+    }
+
+    const results = [];
+    for (const item of items) {
+      const { productId, quantity = 1 } = item;
+      
+      let product;
+      try {
+        product = await adapter.Product.findById(productId);
+      } catch (err) {
+        product = findInMemoryById(productId);
+      }
+
+      if (!product) {
+        results.push({ productId, available: false, message: 'Product not found' });
+        continue;
+      }
+
+      const stock = product.countInStock || product.stock || 0;
+      const available = stock >= quantity;
+
+      results.push({
+        productId,
+        available,
+        requested: quantity,
+        availableQty: stock,
+        message: available ? 'Available' : `Only ${stock} available`
+      });
+    }
+
+    const allAvailable = results.every(r => r.available);
+    res.json({ success: allAvailable, items: results });
+  } catch (e) {
+    console.error('checkInventory error:', e?.message);
+    res.status(500).json({ message: e?.message || 'Inventory check failed' });
+  }
+};
+
 exports.createProduct = async (req, res) => {
   try {
     // Debug: log incoming request metadata to help diagnose 500 errors
@@ -249,6 +485,7 @@ exports.getProductBySlug = async (req, res) => {
 
 // Add a user review/rating to a product.
 // Expects authMiddleware to set req.user and body to contain { rating: number, comment?: string }
+// Supports file uploads for review photos
 exports.addReview = async (req, res) => {
   try {
     const id = req.params.id;
@@ -257,6 +494,12 @@ exports.addReview = async (req, res) => {
     const { rating, comment } = req.body;
     const r = Number(rating);
     if (!r || r < 1 || r > 5) return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+
+    // Handle uploaded photos
+    let photos = [];
+    if (req.files && req.files.length > 0) {
+      photos = req.files.map(f => `/uploads/${f.filename}`);
+    }
 
     // Load product
     const product = await adapter.Product.findById(id);
@@ -272,8 +515,14 @@ exports.addReview = async (req, res) => {
         if (existing) return res.status(400).json({ message: 'You have already reviewed this product' });
 
         return await sequelize.transaction(async (t) => {
-          // create review
-          await PgReview.create({ userId: user._id, productId: product._id || product.id, rating: r, comment: comment || '' }, { transaction: t });
+          // create review with photos
+          await PgReview.create({ 
+            userId: user._id, 
+            productId: product._id || product.id, 
+            rating: r, 
+            comment: comment || '',
+            photos: photos
+          }, { transaction: t });
           // recompute aggregates from DB
           const agg = await PgReview.findAll({ where: { productId: product._id || product.id }, transaction: t });
           const count = agg.length;
@@ -306,7 +555,14 @@ exports.addReview = async (req, res) => {
     const newRating = ((prevRating * prevNum) + r) / newNum;
     try {
       const updated = await adapter.Product.findByIdAndUpdate(id, { rating: newRating, numReviews: newNum });
-      const reviewObj = { userId: user._id, rating: r, comment: comment || '', date: new Date().toISOString(), userName: user.name || user.email || null };
+      const reviewObj = { 
+        userId: user._id, 
+        rating: r, 
+        comment: comment || '', 
+        photos: photos,
+        date: new Date().toISOString(), 
+        userName: user.name || user.email || null 
+      };
       updated.reviews = Array.isArray(product.reviews) ? [...product.reviews, reviewObj] : [reviewObj];
       return res.json(updated);
     } catch (e) {
