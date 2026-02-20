@@ -28,6 +28,7 @@ const uploadsRoutes = require('./routes/uploads');
 const paymentsRoutes = require('./routes/payments');
 const notificationsRoutes = require('./routes/notifications');
 const inquiriesRoutes = require('./routes/inquiries');
+const inventoryRoutes = require('./routes/inventory');
 const wishlistRoutes = require('./routes/wishlist');
 const cartRoutes = require('./routes/cart');
 const blogRoutes = require('./routes/blogs');
@@ -209,11 +210,6 @@ app.use((req, res, next) => {
 // Serve uploaded files from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Also serve uploads from frontend dist (Vite copies public folder to dist)
-if (frontendDistPath) {
-  app.use('/uploads', express.static(path.join(frontendDistPath, 'uploads')));
-}
-
 // Mount API routes BEFORE the catch-all for frontend
 // This is critical: API routes must be handled before the React router catch-all
 app.use('/api/auth', authRoutes);
@@ -229,6 +225,7 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/promo', promoRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // If PG is enabled, mount PG product routes under /api/pg/products
 if (pgProductsRouter) {
@@ -274,6 +271,11 @@ if (isProduction) {
     }
   } catch (e) {
     console.error('Error checking paths:', e);
+  }
+  
+  // Also serve uploads from frontend dist (Vite copies public folder to dist)
+  if (frontendDistPath) {
+    app.use('/uploads', express.static(path.join(frontendDistPath, 'uploads')));
   }
   
   if (frontendDistPath) {

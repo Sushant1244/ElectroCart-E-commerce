@@ -24,13 +24,23 @@ export default function ProductCard({ p }) {
     'homepad-mini': '/uploads/Homepad mini.png',
     'matrixsafe-charger': '/uploads/MatrixSafe Charger.png',
     'iphone-15-pro-max': '/uploads/Iphone 15 pro ma.png',
-  'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png',
-  'music-magnet-headphone': '/uploads/Music magnet Headphone.jpg',
-  'security-smart-camera': '/uploads/Security Smart Camera.png',
-  'smart-box': '/uploads/Smart Box.png',
-  'macbook-air-m3': '/uploads/Macebook Air M3.png',
-  'mini-speaker': '/uploads/Mini Speaker.png',
-  'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png'
+    'macbook-m2-dark-gray': '/uploads/MacBook Air M4.png',
+    'music-magnet-headphone': '/uploads/Music magnet Headphone.jpg',
+    'security-smart-camera': '/uploads/Security Smart Camera.png',
+    'smart-box': '/uploads/Smart Box.png',
+    'macbook-air-m3': '/uploads/Macebook Air M3.png',
+    'mini-speaker': '/uploads/Mini Speaker.png',
+    'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png',
+    'iphone-16-pro-max': '/uploads/Iphone 16 pro ma.png',
+    'ipad': '/uploads/Ipad.png',
+    'ipad-air-m2': '/uploads/Ipad Air M2 mini.png',
+    'camera': '/uploads/Camera.png',
+    'hikvision-camera': '/uploads/Hikvision Camera.png',
+    'headphone': '/uploads/Headphone.png',
+    'accessories': '/uploads/Accessories.png',
+    'iphone-lighting-cable': '/uploads/Iphone Lighting Cable.png',
+    'iphone-banner': '/uploads/Iphone banner.png',
+    'apple-watch': '/uploads/Apple Watch.png'
   };
 
   const getImageUrl = (img) => {
@@ -44,10 +54,28 @@ export default function ProductCard({ p }) {
   const rawFirst = Array.isArray(p.images) ? p.images[0] : p.images;
   let img;
   const slugKey = String((p && (p.slug ?? p._id ?? p.id)) || '').toLowerCase();
-  if (rawFirst && !String(rawFirst).includes('Image ')) img = getImageUrl(rawFirst);
+  
+  // Check if the image is a generic placeholder name that should use fallback
+  const isGenericImage = rawFirst && (
+    String(rawFirst).match(/^Image\s*\d+/i) || // Image 1, Image 2, etc.
+    String(rawFirst).match(/^img_/i) || // img_123
+    String(rawFirst).match(/^photo_/i) || // photo_123
+    String(rawFirst).match(/^DSC/i) || // DSC_1234 (camera photos)
+    String(rawFirst).toLowerCase() === 'null' ||
+    !String(rawFirst).match(/\.(png|jpg|jpeg|webp|svg|gif)$/i)
+  );
+  
+  if (rawFirst && !isGenericImage) img = getImageUrl(rawFirst);
   else if (UPLOAD_FALLBACK[slugKey]) img = getImageUrl(UPLOAD_FALLBACK[slugKey]);
   else if (p.name && /watch/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['alpha-watch-ultra']);
-  else img = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial, Helvetica, sans-serif" font-size="14">No image</text></svg>';
+  else if (p.name && /iphone/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['iphone-15-pro-max']);
+  else if (p.name && /ipad/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['ipad']);
+  else if (p.name && /macbook|laptop/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['macbook-m2-dark-gray']);
+  else if (p.name && /headphone|earbud|airpod/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['wireless-headphones']);
+  else if (p.name && /camera/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['camera']);
+  else if (p.name && /charger|cable/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['matrixsafe-charger']);
+  else if (p.name && /speaker|audio/i.test(p.name)) img = getImageUrl(UPLOAD_FALLBACK['mini-speaker']);
+  else img = getImageUrl(UPLOAD_FALLBACK['alpha-watch-ultra']);
   const rating = p.rating || 5;
   
   const addToCart = (e) => {

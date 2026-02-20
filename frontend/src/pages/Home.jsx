@@ -3,6 +3,8 @@ import API from '../api/api';
 import { resolveImageSrc } from '../utils/resolveImage';
 import ProductCard from '../components/ProductCard';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { SelfUpdatingBanner } from '../components/SelfUpdatingBanner';
+import '../styles/SelfUpdatingComponents.css';
 
 export default function Home(){
   const [products, setProducts] = useState([]);
@@ -59,6 +61,66 @@ export default function Home(){
     { name: 'Headphone', imageFile: 'Headphone.png' },
     { name: 'Camera', imageFile: 'Camera.png' },
     { name: 'Accessories', imageFile: 'Accessories.png' }
+  ];
+
+  // Self-updating banner configuration
+  const bannerConfig = {
+    interval: 5000,
+    transitionDuration: 500,
+    transitionType: 'slide',
+    direction: 'left',
+    pauseOnHover: true,
+    showNavigation: true,
+    showDots: true,
+    showProgress: true,
+  };
+
+  // Dynamic banners based on products
+  const banners = [
+    {
+      id: 1,
+      title: 'Summer Sale',
+      subtitle: 'Up to 30% Off',
+      description: 'Discover amazing deals on latest electronics and gadgets. Limited time offer!',
+      image: '/uploads/Alpha  Watch banner.png',
+      badge: 'HOT DEAL',
+      ctaText: 'Shop Now',
+      ctaLink: '/#products',
+      textAlign: 'left',
+    },
+    {
+      id: 2,
+      title: 'New Arrivals',
+      subtitle: 'Latest Tech Collection',
+      description: 'Explore our newest products from top brands. Be the first to experience innovation.',
+      image: '/uploads/Iphone banner.png',
+      badge: 'NEW',
+      ctaText: 'Explore',
+      ctaLink: '/products?category=new',
+      textAlign: 'right',
+    },
+    {
+      id: 3,
+      title: 'Free Shipping',
+      subtitle: 'On Orders Over Rs. 5000',
+      description: 'Get free delivery on all orders above Rs. 5000. Shop from the comfort of your home.',
+      image: '/uploads/Homepages.png',
+      badge: 'FREE SHIP',
+      ctaText: 'Learn More',
+      ctaLink: '/faq',
+      textAlign: 'center',
+    },
+    {
+      id: 4,
+      title: 'Premium Quality',
+      subtitle: '100% Authentic',
+      description: 'All products are 100% genuine with official warranty. Shop with confidence.',
+      image: '/uploads/Headphone.png',
+      badge: 'AUTHENTIC',
+      ctaText: 'View Products',
+      ctaLink: '/products',
+      textAlign: 'left',
+    },
   ];
 
   // (removed unused getCategoryImage helper) - images for categories resolved inline where needed
@@ -223,52 +285,12 @@ export default function Home(){
 
   return (
     <div className="home-page">
-      {/* Hero Section */}
-      <section className="hero-banner">
-        <div className="hero-slide active">
-          <div className="container hero-content-wrapper">
-            <div className="hero-content">
-              <span className="hero-badge">SALE UP TO 30% OFF</span>
-              <h1>Alpha Watch Series</h1>
-              <p>Featured packed at a better value than over powerful sensors to monitor your fitness.</p>
-              <button
-                  type="button"
-                  className="btn-shop-now"
-                  aria-label="Shop all products"
-                onClick={() => {
-                  // If already on home, just scroll. Otherwise navigate then scroll after a tick.
-                  if (location.pathname === '/') {
-                    const el = document.getElementById('products');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  } else {
-                    navigate('/');
-                    setTimeout(() => {
-                      const el = document.getElementById('products');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }, 120);
-                  }
-                }}
-              >
-                Shop Now →
-              </button>
-            </div>
-            <div className="hero-image">
-              {/* prefer local public/uploads, fallback to backend */}
-              {(() => {
-                const { local, remote } = resolveImageSrc('/uploads/Alpha  Watch banner.png');
-                return (
-                  <img
-                    src={local || remote}
-                    alt="Alpha Watch"
-                    loading="lazy"
-                    onError={(e) => { if (remote && e.currentTarget.src !== remote) e.currentTarget.src = remote; else { e.currentTarget.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; } }}
-                  />
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Self-Updating Hero Banner Section */}
+      <SelfUpdatingBanner 
+        banners={banners} 
+        config={bannerConfig}
+        className="hero-banner"
+      />
 
       {/* Trending Categories */}
       <section className="categories-section">

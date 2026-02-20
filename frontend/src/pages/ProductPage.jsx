@@ -11,6 +11,7 @@ export default function ProductPage() {
   const [imageUrls, setImageUrls] = useState([]); // array of { local, remote, url }
   const [mainImageObj, setMainImageObj] = useState(null);
   const [liked, setLiked] = useState(false);
+  const [uploadsIndex, setUploadsIndex] = useState(null);
 
   const DEMOS = {
     'alpha-watch-ultra': { _id: 'demo1', name: 'Alpha Watch ultra', slug: 'alpha-watch-ultra', price: 3500, images: ['/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png'], stock: 10, featured: true, description: 'Demo Alpha Watch' },
@@ -100,24 +101,20 @@ export default function ProductPage() {
     return [String(imgs)];
   };
 
+  // Load uploads index once on mount
+  useEffect(() => {
+    fetch('/uploads/_list.json')
+      .then(res => res.json())
+      .then(data => setUploadsIndex(data))
+      .catch(() => setUploadsIndex(null));
+  }, []);
+
   useEffect(() => {
     if (!product) {
       setImageUrls([]);
       setMainImageObj(null);
-  setLiked(false);
+      setLiked(false);
       return;
-    }
-    // attempt to load the public uploads index to help match messy filenames (spaces, emoji)
-    let uploadsIndex = null;
-    try {
-      // the file is bundled under public/uploads/_list.json in dev
-      uploadsIndex = require('../../public/uploads/_list.json');
-    } catch (e) {
-      try {
-        // try relative path fetch as a last resort in browser (this code only runs server-side during build/read)
-        // leave uploadsIndex null if not available
-        uploadsIndex = null;
-      } catch (_e) { uploadsIndex = null; }
     }
     const raw = normalizeImages(product.images || []);
     const candidates = [];
@@ -147,11 +144,15 @@ export default function ProductPage() {
       'security-smart-camera': '/uploads/Security Smart Camera.png',
       'smart-box': '/uploads/Smart Box.png',
       'mini-speaker': '/uploads/Mini Speaker.png',
-      'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png'
+      'entertainment-games-pack': '/uploads/ENTERTAINMENT & GAMES.png',
+      'iphone-16-pro-max': '/uploads/Iphone 16 pro ma.png',
+      'ipad': '/uploads/Ipad.png',
+      'camera': '/uploads/Camera.png',
+      'headphone': '/uploads/Headphone.png'
     };
 
-  const prodSlug = String(product.slug || product._id || product.id || '').toLowerCase();
-  if (candidates.length === 0 && FALLBACK[prodSlug]) candidates.push(FALLBACK[prodSlug]);
+    const prodSlug = String(product.slug || product._id || product.id || '').toLowerCase();
+    if (candidates.length === 0 && FALLBACK[prodSlug]) candidates.push(FALLBACK[prodSlug]);
 
     // helper: try to match a candidate path to an exact filename in uploadsIndex
     const matchToUploadList = (path) => {
@@ -178,7 +179,7 @@ export default function ProductPage() {
 
     setImageUrls(resolved);
     setMainImageObj(resolved[0] || null);
-  }, [product]);
+  }, [product, uploadsIndex]);
 
   useEffect(() => {
     try {
