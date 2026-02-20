@@ -11,6 +11,7 @@ const adapter = {};
 if (pgConfig && pgConfig.Product) {
   const { Product: PgProduct, User: PgUser, Order: PgOrder, Wishlist: PgWishlist, CartItem: PgCartItem } = pgConfig;
   const NotificationModel = pgConfig.Notification;
+  const PaymentMethodModel = pgConfig.PaymentMethod;
 
   adapter.Product = {
     create: async (data) => {
@@ -258,6 +259,47 @@ if (pgConfig && pgConfig.Product) {
     find: async (query = {}) => { if (!PgCartItem) return []; const rows = await PgCartItem.findAll({ where: query, order: [['createdAt', 'DESC']] }); return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; }); },
     updateById: async (id, update) => { if (!PgCartItem) return null; const inst = await PgCartItem.findByPk(id); if (!inst) return null; await inst.update(update); await inst.reload(); const o = inst.toJSON(); o._id = o.id; return o; },
     deleteById: async (id) => { if (!PgCartItem) return 0; const inst = await PgCartItem.findByPk(id); if (!inst) return 0; await inst.destroy(); return 1; }
+  };
+
+  // PaymentMethod adapter
+  adapter.PaymentMethod = {
+    create: async (data) => {
+      if (!PaymentMethodModel) return null;
+      const inst = await PaymentMethodModel.create(data);
+      const obj = inst.toJSON(); obj._id = obj.id; return obj;
+    },
+    find: async (query = {}) => {
+      if (!PaymentMethodModel) return [];
+      const rows = await PaymentMethodModel.findAll({ where: query, order: [['createdAt', 'DESC']] });
+      return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; });
+    },
+    findOne: async (query = {}) => {
+      if (!PaymentMethodModel) return null;
+      const inst = await PaymentMethodModel.findOne({ where: query });
+      if (!inst) return null;
+      const o = inst.toJSON(); o._id = o.id; return o;
+    },
+    findById: async (id) => {
+      if (!PaymentMethodModel) return null;
+      const inst = await PaymentMethodModel.findByPk(id);
+      if (!inst) return null;
+      const o = inst.toJSON(); o._id = o.id; return o;
+    },
+    findByIdAndUpdate: async (id, update) => {
+      if (!PaymentMethodModel) return null;
+      const inst = await PaymentMethodModel.findByPk(id);
+      if (!inst) return null;
+      await inst.update(update);
+      await inst.reload();
+      const o = inst.toJSON(); o._id = o.id; return o;
+    },
+    deleteById: async (id) => {
+      if (!PaymentMethodModel) return 0;
+      const inst = await PaymentMethodModel.findByPk(id);
+      if (!inst) return 0;
+      await inst.destroy();
+      return 1;
+    }
   };
 
 } else {
