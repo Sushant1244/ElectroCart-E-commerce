@@ -209,6 +209,11 @@ app.use((req, res, next) => {
 // Serve uploaded files from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Also serve uploads from frontend dist (Vite copies public folder to dist)
+if (frontendDistPath) {
+  app.use('/uploads', express.static(path.join(frontendDistPath, 'uploads')));
+}
+
 // Mount API routes BEFORE the catch-all for frontend
 // This is critical: API routes must be handled before the React router catch-all
 app.use('/api/auth', authRoutes);

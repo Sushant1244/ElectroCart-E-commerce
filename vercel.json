@@ -13,7 +13,7 @@
       "src": "backend/server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["frontend/dist/**", "backend/**"],
+        "includeFiles": ["frontend/dist/**", "frontend/public/uploads/**", "backend/**"],
         "excludeFiles": ["backend/test/**", "backend/scripts/**", "backend/logs/**", "**/*.test.js"]
       }
     }
