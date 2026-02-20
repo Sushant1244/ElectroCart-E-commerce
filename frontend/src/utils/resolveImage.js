@@ -1,5 +1,9 @@
 export function resolveImageSrc(img) {
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const isProduction = import.meta.env.PROD;
+  // In production, use the same origin. In development, use localhost:5001
+  const API_BASE = isProduction 
+    ? '' 
+    : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
   if (!img) return { local: null, remote: null };
   // allow arrays or comma-separated values
   if (Array.isArray(img)) img = img[0];
@@ -17,7 +21,9 @@ export function resolveImageSrc(img) {
   const filename = cleanPath.substring(lastSlash + 1);
   // encode filename but preserve slashes and spaces replaced with %20
   const encoded = encodeURIComponent(filename).replace(/%20/g, '%20');
-  const local = `${window.location.origin}/uploads/${encoded}`; // try local public/uploads first
-  const remote = `${API_BASE.replace('/api', '')}/uploads/${encoded}`; // backend fallback (remove /api from base)
+  // In production, use same origin for both local and remote
+  const origin = window.location.origin;
+  const local = `${origin}/uploads/${encoded}`;
+  const remote = API_BASE ? `${API_BASE.replace('/api', '')}/uploads/${encoded}` : `${origin}/uploads/${encoded}`;
   return { local, remote };
 }

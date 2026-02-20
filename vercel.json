@@ -14,13 +14,17 @@
       "use": "@vercel/node",
       "config": {
         "includeFiles": ["frontend/dist/**", "backend/**"],
-        "excludeFiles": ["backend/uploads/**", "frontend/public/uploads/**", "backend/test/**", "backend/scripts/**", "backend/logs/**", "**/*.test.js"]
+        "excludeFiles": ["backend/test/**", "backend/scripts/**", "backend/logs/**", "**/*.test.js"]
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/uploads/(.*)",
       "dest": "backend/server.js"
     },
     {
