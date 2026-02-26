@@ -1,6 +1,79 @@
 const adapter = require('../models/adapter');
 
-// In-memory promo codes storage (can be moved to database in production)
+// Promo code templates for quick creation
+const promoTemplates = [
+  {
+    id: 'welcome',
+    name: 'Welcome Offer',
+    code: 'WELCOME',
+    discountType: 'percentage',
+    discountValue: 10,
+    minOrderAmount: 500,
+    maxUses: 100,
+    description: '10% off for new customers'
+  },
+  {
+    id: 'summer',
+    name: 'Summer Sale',
+    code: 'SUMMER',
+    discountType: 'percentage',
+    discountValue: 20,
+    minOrderAmount: 1000,
+    maxUses: 50,
+    description: '20% off summer sale'
+  },
+  {
+    id: 'flat500',
+    name: 'Flat Rs. 500 Off',
+    code: 'FLAT500',
+    discountType: 'fixed',
+    discountValue: 500,
+    minOrderAmount: 3000,
+    maxUses: 200,
+    description: 'Rs. 500 off on orders above Rs. 3000'
+  },
+  {
+    id: 'flash',
+    name: 'Flash Sale',
+    code: 'FLASH',
+    discountType: 'percentage',
+    discountValue: 30,
+    minOrderAmount: 0,
+    maxUses: 25,
+    description: '30% off - limited time only!'
+  },
+  {
+    id: 'vip',
+    name: 'VIP Special',
+    code: 'VIP15',
+    discountType: 'percentage',
+    discountValue: 15,
+    minOrderAmount: 2000,
+    maxUses: 100,
+    description: '15% off for VIP customers'
+  },
+  {
+    id: 'free Shipping',
+    name: 'Free Shipping',
+    code: 'FREESHIP',
+    discountType: 'percentage',
+    discountValue: 100,
+    minOrderAmount: 1500,
+    maxUses: 500,
+    description: 'Free shipping on orders above Rs. 1500'
+  }
+];
+
+// Get promo code templates
+exports.getPromoTemplates = async (req, res) => {
+  try {
+    res.json(promoTemplates);
+  } catch (e) {
+    res.status(500).json({ message: e?.message || 'Failed to get promo templates' });
+  }
+};
+
+// Initialize with some sample promo codes
 const promoCodes = new Map();
 
 // Initialize with some sample promo codes

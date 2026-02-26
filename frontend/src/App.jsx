@@ -28,6 +28,7 @@ import AdminAddBlog from './pages/admin/AdminAddBlog';
 import AdminEditBlog from './pages/admin/AdminEditBlog';
 import AdminBlogs from './pages/admin/AdminBlogs';
 import AdminInventory from './pages/admin/AdminInventory';
+import AdminPromos from './pages/admin/AdminPromos';
 import AdminLayout from './pages/admin/AdminLayout';
 import FAQ from './pages/FAQ';
 import New from './pages/New';
@@ -113,6 +114,7 @@ function App(){
           <Route path="/admin/orders" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminOrders /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/create-order" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminCreateOrder /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/blogs" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminBlogs /></ErrorBoundary>) : <Navigate to="/login" /> } />
+          <Route path="/admin/promos" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminPromos /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/inventory" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminInventory /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/add-blog" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminAddBlog /></ErrorBoundary>) : <Navigate to="/login" /> } />
           <Route path="/admin/edit-blog/:id" element={ user?.isAdmin ? requireVerified(<ErrorBoundary><AdminEditBlog /></ErrorBoundary>) : <Navigate to="/login" /> } />

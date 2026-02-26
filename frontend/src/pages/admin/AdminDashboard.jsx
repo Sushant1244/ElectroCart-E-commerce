@@ -3,6 +3,7 @@ import './admin.css';
 import API from '../../api/api';
 import { resolveImageSrc } from '../../utils/resolveImage';
 import { Link, useNavigate } from 'react-router-dom';
+import ExportReport from '../../components/ExportReport';
 import {
   LineChart,
   Line,
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('All Status');
   const [preferAnalytics, setPreferAnalytics] = useState(true);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const UPLOAD_FALLBACK = {
     'alpha-watch-ultra': '/uploads/Alpha Watch ultra ⭐ Featured Product Alpha Watch ultra.png',
@@ -88,11 +90,36 @@ export default function AdminDashboard() {
     })();
   }, []);
 
+  // Export analytics to CSV
+  const exportAnalytics = async () => {
+    try {
+      const response = await API.get('/analytics/export', {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics_report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setExportMsg('Report exported successfully!');
+      setTimeout(() => setExportMsg(''), 3000);
+    } catch (err) {
+      console.error('Export error:', err);
+      setExportMsg('Failed to export report');
+      setTimeout(() => setExportMsg(''), 3000);
+    }
+  };
+
   // Export orders to CSV
   const exportOrders = () => {
     try {
-  console.log('Export Orders clicked — orders length:', orders && orders.length);
-  const list = orders && orders.length ? orders : (recentOrders || []);
+      console.log('Export Orders clicked — orders length:', orders && orders.length);
+      const list = orders && orders.length ? orders : (recentOrders || []);
       if (!list || list.length === 0) return alert('No orders to export');
       const headers = ['Order ID','Customer','Email','Total','Status','Date'];
       const rows = list.map(o => [o.id || o._id || '', (o.customer || o.name || ''), (o.email || ''), (o.total || ''), (o.status || ''), (o.date || o.createdAt || '')]);
@@ -106,14 +133,14 @@ export default function AdminDashboard() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-  console.log('Export Orders created file for', list.length, 'rows');
-  setExportMsg(`Exported ${list.length} orders`);
-  // auto-clear message after a few seconds
-  setTimeout(() => setExportMsg(''), 4000);
+      console.log('Export Orders created file for', list.length, 'rows');
+      setExportMsg(`Exported ${list.length} orders`);
+      // auto-clear message after a few seconds
+      setTimeout(() => setExportMsg(''), 4000);
     } catch (err) {
       console.error('Export orders failed', err);
-  setExportMsg('Export failed — see console');
-  console.error(err);
+      setExportMsg('Export failed — see console');
+      console.error(err);
     }
   };
 
@@ -284,6 +311,15 @@ export default function AdminDashboard() {
   );
   console.debug('AdminDashboard totalRevenue:', totalRevenue);
 
+  // Conversion metrics from analytics
+  const conversionMetrics = analytics?.conversionMetrics || {
+    conversionRate: '0.00',
+    orderCompletionRate: '0.00',
+    revenuePerUser: '0.00',
+    avgItemsPerOrder: '0.00',
+    totalUsers: 0
+  };
+
   const weeklySales = (analytics?.weeklySales || [
     { day: 'Mon', sales: 140 },
     { day: 'Tue', sales: 180 },
@@ -323,6 +359,9 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="top-actions">
+          <button className="btn-outline" onClick={() => setShowExportModal(true)} style={{ marginRight: '8px' }}>
+            📊 Export Report
+          </button>
           <button className="link-logout">Logout</button>
         </div>
       </header>
@@ -360,6 +399,35 @@ export default function AdminDashboard() {
               <small>Total Orders</small>
               <div className="value">{orders.length || totalOrders}</div>
               <div className="delta positive">+15.2%</div>
+            </div>
+          </section>
+
+          {/* Conversion Metrics Section */}
+          <section className="stats-cards">
+            <div className="stat">
+              <small>Conversion Rate</small>
+              <div className="value">{conversionMetrics.conversionRate}%</div>
+              <div className="muted">Orders per user</div>
+            </div>
+            <div className="stat">
+              <small>Avg Order Value</small>
+              <div className="value">{formatCurrency(analytics?.avgOrderValue || 0)}</div>
+              <div className="muted">Per order</div>
+            </div>
+            <div className="stat">
+              <small>Revenue per User</small>
+              <div className="value">{formatCurrency(conversionMetrics.revenuePerUser)}</div>
+              <div className="muted">Average</div>
+            </div>
+            <div className="stat">
+              <small>Items per Order</small>
+              <div className="value">{conversionMetrics.avgItemsPerOrder}</div>
+              <div className="muted">Average</div>
+            </div>
+            <div className="stat">
+              <small>Completion Rate</small>
+              <div className="value">{conversionMetrics.orderCompletionRate}%</div>
+              <div className="muted">Paid orders</div>
             </div>
           </section>
 
@@ -604,6 +672,13 @@ export default function AdminDashboard() {
             </table>
           </section>
         </main>
+      )}
+
+      {showExportModal && (
+        <ExportReport 
+          onClose={() => setShowExportModal(false)} 
+          onExportComplete={() => setExportMsg('Report exported successfully!')}
+        />
       )}
     </div>
   );

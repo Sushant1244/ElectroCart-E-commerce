@@ -28,6 +28,7 @@ export default function AdminLayout({ children }) {
     { path: '/admin/inventory', label: 'Inventory', icon: '📦' },
     { path: '/admin/add', label: 'Add Product', icon: '➕' },
     { path: '/admin/orders', label: 'Orders', icon: '🛒' },
+    { path: '/admin/promos', label: 'Promos', icon: '🏷️' },
     { path: '/admin/blogs', label: 'Blogs', icon: '📝' },
   ];
 

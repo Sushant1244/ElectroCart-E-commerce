@@ -930,3 +930,379 @@
   }
 }
 
+/* ========================
+   Promo Codes Management
+   ======================== */
+
+.admin-promos {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.promos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.promo-card {
+  background: var(--card);
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.promo-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.promo-card.inactive {
+  opacity: 0.7;
+}
+
+.promo-card.expired {
+  border-color: #fecaca;
+  background: #fefafafa;
+}
+
+.promo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.promo-code {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  background: #f1f5f9;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  letter-spacing: 1px;
+}
+
+.promo-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.promo-status.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.promo-status.inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.promo-status.expired {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.promo-card-body {
+  margin-bottom: 1rem;
+}
+
+.promo-description {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.promo-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.promo-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.promo-detail .label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.promo-detail .value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.promo-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.promo-card-actions button {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.promo-card-actions .btn-toggle {
+  background: #f3f4f6;
+  color: var(--muted);
+}
+
+.promo-card-actions .btn-toggle:hover {
+  background: #e5e7eb;
+}
+
+.promo-card-actions .btn-activate {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.promo-card-actions .btn-activate:hover {
+  background: #a7f3d0;
+}
+
+.promo-card-actions .btn-deactivate {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.promo-card-actions .btn-deactivate:hover {
+  background: #fecaca;
+}
+
+.promo-card-actions .btn-edit {
+  background: var(--accent);
+  color: white;
+}
+
+.promo-card-actions .btn-edit:hover {
+  background: var(--accent-strong);
+}
+
+.promo-card-actions .btn-delete {
+  background: #ef4444;
+  color: white;
+}
+
+.promo-card-actions .btn-delete:hover {
+  background: #dc2626;
+}
+
+/* Promo Templates Section */
+.templates-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12px;
+  border: 1px solid #bae6fd;
+}
+
+.templates-section h3 {
+  margin: 0 0 0.5rem 0;
+  color: #0369a1;
+  font-size: 1.25rem;
+}
+
+.templates-sub {
+  margin: 0 0 1rem 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.template-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.template-card:hover {
+  border-color: #0ea5e9;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+  transform: translateY(-2px);
+}
+
+.template-name {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.template-code {
+  font-family: monospace;
+  background: #f1f5f9;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #475569;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+
+.template-discount {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #059669;
+  margin-bottom: 0.5rem;
+}
+
+.template-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.btn-template {
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.btn-template:hover {
+  background: #0284c7;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--muted);
+  grid-column: 1 / -1;
+}
+
+/* Modal styles */
+.promo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.promo-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.promo-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.promo-form label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.promo-form input,
+.promo-form select,
+.promo-form textarea {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.promo-form input:focus,
+.promo-form select:focus,
+.promo-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.promo-form .checkbox-group {
+  flex-direction: row;
+  align-items: center;
+}
+
+.promo-form .checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.promo-form .checkbox-group input {
+  width: auto;
+}
+
+.promo-form .form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.promo-form .btn-primary {
+  background: var(--accent);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.promo-form .btn-primary:hover {
+  background: var(--accent-strong);
+}
+
+.promo-form .btn-secondary {
+  background: #f3f4f6;
+  color: var(--muted);
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.promo-form .btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .promos-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .promo-form .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+

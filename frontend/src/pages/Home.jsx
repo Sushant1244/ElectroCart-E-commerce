@@ -75,50 +75,17 @@ export default function Home(){
     showProgress: true,
   };
 
-  // Dynamic banners based on products
+  // Single static banner (old style - no rotation)
   const banners = [
     {
       id: 1,
-      title: 'Summer Sale',
-      subtitle: 'Up to 30% Off',
-      description: 'Discover amazing deals on latest electronics and gadgets. Limited time offer!',
-      image: '/uploads/Alpha  Watch banner.png',
+      title: 'Security Smart Camera',
+      subtitle: 'Just Start at $850',
+      description: 'Shop now for the best security cameras at great prices.',
+      image: '/uploads/Security Smart Camera.png',
       badge: 'HOT DEAL',
       ctaText: 'Shop Now',
       ctaLink: '/#products',
-      textAlign: 'left',
-    },
-    {
-      id: 2,
-      title: 'New Arrivals',
-      subtitle: 'Latest Tech Collection',
-      description: 'Explore our newest products from top brands. Be the first to experience innovation.',
-      backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      badge: 'NEW',
-      ctaText: 'Explore',
-      ctaLink: '/products?category=new',
-      textAlign: 'right',
-    },
-    {
-      id: 3,
-      title: 'Free Shipping',
-      subtitle: 'On Orders Over Rs. 5000',
-      description: 'Get free delivery on all orders above Rs. 5000. Shop from the comfort of your home.',
-      image: '/uploads/Homepages.png',
-      badge: 'FREE SHIP',
-      ctaText: 'Learn More',
-      ctaLink: '/faq',
-      textAlign: 'center',
-    },
-    {
-      id: 4,
-      title: 'Premium Quality',
-      subtitle: '100% Authentic',
-      description: 'All products are 100% genuine with official warranty. Shop with confidence.',
-      image: '/uploads/Headphone.png',
-      badge: 'AUTHENTIC',
-      ctaText: 'View Products',
-      ctaLink: '/products',
       textAlign: 'left',
     },
   ];
@@ -403,9 +370,6 @@ export default function Home(){
           </div>
         </div>
       </section>
-
-      {/* Uploads Gallery (dev) */}
-  {/* Uploads gallery removed */}
 
       {/* Latest Products */}
       <section className="latest-products" id="products">

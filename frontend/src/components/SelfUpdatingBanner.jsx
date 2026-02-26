@@ -263,7 +263,7 @@ function BannerContent({ banner }) {
     ctaLink = '/products',
     badge,
     textAlign = 'left',
-    textColor = '#ffffff',
+    textColor = 'black',
     overlay = true,
   } = banner;
   
