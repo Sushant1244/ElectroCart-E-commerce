@@ -1,29 +1,52 @@
 # ElectroCart — Full-Stack E-Commerce Platform
 
-So I built this e-commerce application over time — started as something small and gradually grew into a full-featured shopping platform. It's got a React frontend running on Vite, Node/Express backend, and honestly works pretty well for what I needed it to do. Let me walk you through what's here.
+<p align="center">
+  <img src="https://img.shields.io/badge/ElectroCart-E--Commerce-blue?style=for-the-badge&logo=shopping-cart&logoColor=white" alt="ElectroCart">
+  <img src="https://img.shields.io/badge/React-18-blue?style=flat&logo=react" alt="React">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-green?style=flat&logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/PostgreSQL-13+-blue?style=flat&logo=postgresql" alt="PostgreSQL">
+</p>
 
-![License](https://img.shields.io/badge/license-MIT-green)
-![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)
-![React](https://img.shields.io/badge/React-18-blue)
+## Introduction
+
+ElectroCart is a comprehensive full-stack e-commerce platform built with modern web technologies. This application provides a complete shopping experience with user authentication, product management, shopping cart functionality, order processing, and payment integration. It's designed specifically for the Nepalese market with native support for popular local payment gateways like Khalti and eSewa.
+
+The project features a React-based frontend with Vite for fast development, a Node.js/Express backend API, and optional PostgreSQL database support. It includes both customer-facing features and a powerful admin dashboard for managing products, orders, and analytics.
 
 ---
 
-## What It Can Do
+## Key Features
 
-### For Shoppers
-You've got your standard e-commerce stuff here — product browsing with categories and search, a shopping cart that actually remembers what's in it, user accounts with order history, wishlists, and real-time order tracking so people know where their stuff is.
+### Customer Features
+- **Product Browsing**: Browse products by categories, search functionality, filtering by price/rating, and product detail pages with images and descriptions
+- **User Authentication**: Secure registration and login with OTP verification via email, JWT-based session management
+- **Shopping Cart**: Add/remove items, quantity adjustment, price calculation, persistent cart (saved to database for logged-in users)
+- **Wishlist**: Save products for later, move items to cart, persistent across sessions
+- **Order Management**: Place orders, view order history, track order status in real-time
+- **User Dashboard**: Profile management, address book, order tracking, notification center
 
-### For Admins
-The dashboard gives you revenue charts and sales analytics (always satisfying to see those numbers). There's full inventory management with stock tracking, bulk operations, and alerts when things are running low. Product management lets you add, edit, and delete items with image uploads. And there's a simple blog system if you want to publish content.
+### Admin Features
+- **Dashboard Analytics**: Revenue charts, sales statistics, top products, recent orders overview using Recharts
+- **Product Management**: Full CRUD operations, bulk upload/delete, image upload with preview, category management
+- **Inventory Management**: Stock tracking, low-stock alerts, bulk stock updates, inventory history
+- **Order Management**: View all orders, update order status, process refunds, generate invoices
+- **Blog System**: Create/edit/delete blog posts, publish announcements, content management
+- **User Management**: View users, manage admin accounts, role-based access control
+- **Promo Codes**: Create and manage discount codes, track usage, set expiration dates
+- **Payment Reports**: View payment transactions, track Khalti/eSewa payments, financial summaries
 
-### Payments
-This was built with Nepal's market in mind, so it's got Khalti and eSewa integration — both in sandbox and production modes. If you need something else, you'd need to add it, but these two cover most use cases here.
+### Payment Integration
+- **Khalti Integration**: Complete payment gateway integration with sandbox and production modes, payment verification webhook handling
+- **eSewa Integration**: Full eSewa support for Nepalese users, sandbox testing environment
+- **Order Processing**: Automatic order confirmation emails, payment status tracking, transaction history
 
-### Under the Hood
-- JWT auth for users and admins — nothing fancy, but it works
-- PostgreSQL via Sequelize if you want a real database, or it runs in demo mode without one (super handy for development)
-- Email notifications for orders and OTP verification
-- Some image fallback logic so the UI doesn't break if images fail to load
+### Technical Features
+- **JWT Authentication**: Secure token-based auth for users and administrators with role-based access
+- **Database Options**: PostgreSQL with Sequelize ORM for production, demo mode with in-memory data for development
+- **Email Notifications**: Order confirmations, OTP verification, shipping updates via Nodemailer (SMTP)
+- **Image Handling**: Automatic image fallback, S3 upload support, local storage fallback
+- **RESTful API**: Well-structured API endpoints following REST conventions
+- **Error Handling**: Global error boundaries, graceful degradation, comprehensive error messages
 
 ---
 
@@ -195,34 +218,6 @@ After seeding the database:
 | `/api/analytics` | Dashboard analytics |
 | `/api/blogs` | Blog posts |
 | `/api/notifications` | User notifications |
-
----
-
-## Deployment
-
-### Vercel
-Check out [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for step-by-step instructions.
-
-### Render.com
-See [RENDER_DEPLOY.md](./RENDER_DEPLOY.md).
-
----
-
-## Testing
-
-```bash
-# Backend
-cd backend && npm test
-
-# Frontend
-cd frontend && npm run test
-```
-
----
-
-## License
-
-MIT — do whatever you want with it, basically.
 
 ---
 

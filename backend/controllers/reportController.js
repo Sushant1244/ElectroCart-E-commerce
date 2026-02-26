@@ -535,11 +535,6 @@ function getNestedValue(obj, path) {
   return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 }
 
-// Helper to get nested values
-function getNestedValue(obj, path) {
-  return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-}
-
 // Format shipping address
 function formatAddress(address) {
   if (!address) return '';
