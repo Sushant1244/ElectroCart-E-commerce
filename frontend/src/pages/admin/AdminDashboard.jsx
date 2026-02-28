@@ -359,7 +359,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="top-actions">
-          <button className="btn-outline" onClick={() => setShowExportModal(true)} style={{ marginRight: '8px' }}>
+          <button className="btn-outline" onClick={() => setShowExportModal(true)} style={{ marginInlineEnd: '8px' }}>
             📊 Export Report
           </button>
           <button className="link-logout">Logout</button>
