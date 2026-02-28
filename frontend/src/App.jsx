@@ -14,7 +14,7 @@ import ResetPassword from './pages/ResetPassword';
 import Payment from './pages/Payment';
 import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/admin/AdminDashboard';
-// AdminWelcome removed; consolidate to single public welcome page at /welcome
+
 import UserWelcome from './pages/UserWelcome';
 import VerifyEmail from './pages/VerifyEmail';
 import Orders from './pages/Orders';
