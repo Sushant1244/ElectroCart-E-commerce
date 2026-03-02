@@ -28,7 +28,15 @@ export function setAuthToken(token) {
 }
 
 // Initialize Authorization header from localStorage token (so callers don't need to call setAuthToken)
-const initialToken = localStorage.getItem('token');
+let initialToken = null;
+try {
+  if (typeof localStorage !== 'undefined' && localStorage && typeof localStorage.getItem === 'function') {
+    initialToken = localStorage.getItem('token');
+  }
+} catch (e) {
+  // localStorage not available in this environment (tests or SSR)
+  initialToken = null;
+}
 if (initialToken) api.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
 
 // Intercept 401 responses and clear auth so UI can prompt login
