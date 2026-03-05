@@ -4,7 +4,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)
 ![React](https://img.shields.io/badge/React-18-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+
 
 ---
 
