@@ -10,4 +10,10 @@ router.post('/', controller.createInquiry);
 // Admin-only: list inquiries
 router.get('/', authGuard, isAdmin, controller.listInquiries);
 
+// Admin-only: delete inquiry
+router.delete('/:id', authGuard, isAdmin, controller.deleteInquiry);
+
+// Admin-only: update inquiry status
+router.patch('/:id', authGuard, isAdmin, controller.updateInquiryStatus);
+
 module.exports = router;

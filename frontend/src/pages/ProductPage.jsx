@@ -291,7 +291,10 @@ export default function ProductPage() {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          API.post('/notifications', { title: 'Started checkout', body: `You started checkout for ${product.name}`, userId: null }).catch(() => {});
+          // Get user ID for personalized notification
+          const user = JSON.parse(localStorage.getItem('user') || 'null');
+          const userId = user && (user._id || user.id);
+          API.post('/notifications', { title: 'Started checkout', body: `You started checkout for ${product.name}`, userId }).catch(() => {});
         }
       } catch (e) {}
       navigate('/checkout');

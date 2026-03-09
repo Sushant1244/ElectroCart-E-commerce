@@ -15,12 +15,13 @@ function escapeHtml(str) {
 
 exports.listNotifications = async (req, res) => {
   try {
-    // If user is admin and wants all notifications, allow but default to user-specific
-    const q = {};
-    if (!req.user?.isAdmin) {
-      const uid = req.user && (req.user._id || req.user.id);
-      if (uid) q.userId = uid;
+    // Always filter by userId - even for admins, show only their own notifications by default
+    // Use /notifications/all for admin to see all notifications
+    const uid = req.user && (req.user._id || req.user.id);
+    if (!uid) {
+      return res.status(401).json({ message: 'User not authenticated' });
     }
+    const q = { userId: uid };
     const notifs = await adapter.Notification.find(q);
     res.json(notifs);
   } catch (e) {
@@ -72,6 +73,89 @@ exports.createNotification = async (req, res) => {
 };
 
 exports.markRead = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const updated = await adapter.Notification.findByIdAndUpdate(id, { read: true });
+    if (!updated) return res.status(404).json({ message: 'Not found' });
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// Admin: Get all notifications from all users
+exports.getAllNotifications = async (req, res) => {
+  try {
+    const { type, read, limit = 100, offset = 0 } = req.query;
+    const q = {};
+    
+    // Filter by read status
+    if (read !== undefined) {
+      q.read = read === 'true';
+    }
+    
+    // Filter by type (from meta)
+    if (type) {
+      q['meta.type'] = type;
+    }
+    
+    const notifications = await adapter.Notification.find(q);
+    
+    // Get unique notification types for filtering
+    const types = [...new Set(notifications.map(n => n.meta?.type).filter(Boolean))];
+    
+    // Get user info for each notification
+    const enrichedNotifications = await Promise.all(
+      notifications.slice(Number(offset), Number(offset) + Number(limit)).map(async (n) => {
+        const notif = n.toJSON ? n.toJSON() : { ...n };
+        if (n.userId) {
+          try {
+            const user = await adapter.User.findById(n.userId);
+            if (user) {
+              notif.user = { 
+                _id: user._id || user.id, 
+                name: user.name || user.fullName || user.email,
+                email: user.email 
+              };
+            }
+          } catch (e) { /* ignore */ }
+        }
+        return notif;
+      })
+    );
+    
+    res.json({
+      notifications: enrichedNotifications,
+      total: notifications.length,
+      types
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// Admin: Delete a notification
+exports.deleteNotification = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const adapter = require('../models/adapter');
+    // Use findByIdAndDelete if available, otherwise use update
+    if (typeof adapter.Notification.findByIdAndDelete === 'function') {
+      const deleted = await adapter.Notification.findByIdAndDelete(id);
+      if (!deleted) return res.status(404).json({ message: 'Notification not found' });
+    } else {
+      // Fallback: mark as deleted
+      const updated = await adapter.Notification.findByIdAndUpdate(id, { deleted: true });
+      if (!updated) return res.status(404).json({ message: 'Notification not found' });
+    }
+    res.json({ success: true, message: 'Notification deleted' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// Admin: Mark notification as read
+exports.markNotificationRead = async (req, res) => {
   try {
     const id = req.params.id;
     const updated = await adapter.Notification.findByIdAndUpdate(id, { read: true });

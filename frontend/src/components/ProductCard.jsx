@@ -140,8 +140,11 @@ export default function ProductCard({ p }) {
       try {
         const token = localStorage.getItem('token');
         if (token) {
+          // Get user ID for personalized notification
+          const user = JSON.parse(localStorage.getItem('user') || 'null');
+          const userId = user && (user._id || user.id);
           // create a quick notification record for add-to-cart
-          API.post('/notifications', { title: 'Added to cart', body: `You added ${p.name} to your cart.`, userId: null }).catch(() => {});
+          API.post('/notifications', { title: 'Added to cart', body: `You added ${p.name} to your cart.`, userId }).catch(() => {});
         }
       } catch (e) {}
       alert('Added to cart');
@@ -219,7 +222,10 @@ export default function ProductCard({ p }) {
                     } catch (err) {
                       imageToStore = img || null;
                     }
-                    API.post('/notifications', { title: (exists ? 'Removed from wishlist' : 'Added to wishlist'), body: `${p.name} ${exists ? 'removed from' : 'added to'} your wishlist.`, userId: null, meta: { productId: productIdMeta, slug: p.slug, image: imageToStore } }).catch(() => {});
+                    // Get user ID for personalized notification
+                    const user = JSON.parse(localStorage.getItem('user') || 'null');
+                    const userId = user && (user._id || user.id);
+                    API.post('/notifications', { title: (exists ? 'Removed from wishlist' : 'Added to wishlist'), body: `${p.name} ${exists ? 'removed from' : 'added to'} your wishlist.`, userId, meta: { productId: productIdMeta, slug: p.slug, image: imageToStore } }).catch(() => {});
                   }
                 } catch (err) {}
               } catch (err) {

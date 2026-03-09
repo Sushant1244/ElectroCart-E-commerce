@@ -28,6 +28,10 @@ export default function AdminLayout({ children }) {
     { path: '/admin/inventory', label: 'Inventory', icon: '📦' },
     { path: '/admin/add', label: 'Add Product', icon: '➕' },
     { path: '/admin/orders', label: 'Orders', icon: '🛒' },
+    { path: '/admin/users', label: 'Users', icon: '👥' },
+    { path: '/admin/reviews', label: 'Reviews', icon: '⭐' },
+    { path: '/admin/inquiries', label: 'Inquiries', icon: '📨' },
+    { path: '/admin/notifications', label: 'Notifications', icon: '🔔' },
     { path: '/admin/promos', label: 'Promos', icon: '🏷️' },
     { path: '/admin/blogs', label: 'Blogs', icon: '📝' },
   ];

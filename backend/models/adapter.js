@@ -9,7 +9,7 @@ const { Op } = require('sequelize');
 const adapter = {};
 
 if (pgConfig && pgConfig.Product) {
-  const { Product: PgProduct, User: PgUser, Order: PgOrder, Wishlist: PgWishlist, CartItem: PgCartItem } = pgConfig;
+  const { Product: PgProduct, User: PgUser, Order: PgOrder, Wishlist: PgWishlist, CartItem: PgCartItem, Review: PgReview } = pgConfig;
   const NotificationModel = pgConfig.Notification;
   const PaymentMethodModel = pgConfig.PaymentMethod;
 
@@ -111,6 +111,10 @@ if (pgConfig && pgConfig.Product) {
       if (data.password) { data.passwordHash = data.password; delete data.password; }
       await inst.update(data);
       await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; obj.password = obj.passwordHash; return obj;
+    },
+    // Count users
+    count: async () => {
+      return await PgUser.count();
     }
   };
 
@@ -328,6 +332,34 @@ if (pgConfig && pgConfig.Product) {
     findById: async () => null,
     findAll: async () => [],
     findByIdAndUpdate: async () => null,
+  };
+
+  // Review adapter
+  adapter.Review = {
+    findAll: async (query = {}) => {
+      const rows = await PgReview.findAll({ where: query, order: [['createdAt', 'DESC']] });
+      return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; });
+    },
+    findById: async (id) => {
+      const inst = await PgReview.findByPk(id);
+      if (!inst) return null;
+      const obj = inst.toJSON(); obj._id = obj.id; return obj;
+    },
+    findByIdAndUpdate: async (id, update) => {
+      const inst = await PgReview.findByPk(id);
+      if (!inst) return null;
+      await inst.update(update);
+      await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; return obj;
+    },
+    findByIdAndDelete: async (id) => {
+      const inst = await PgReview.findByPk(id);
+      if (!inst) return null;
+      await inst.destroy();
+      return { success: true };
+    },
+    count: async (query = {}) => {
+      return await PgReview.count({ where: query });
+    }
   };
 }
 

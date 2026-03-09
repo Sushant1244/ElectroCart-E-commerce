@@ -348,6 +348,18 @@ export default function AdminDashboard() {
 
   const COLORS = ['#4f46e5', '#7c3aed', '#10b981', '#2563eb', '#ffb020'];
 
+  // Check if analytics has real data (non-zero values)
+  const hasAnalyticsData = analytics && (
+    Number(analytics.totalSales) > 0 || 
+    Number(analytics.totalOrders) > 0 || 
+    (analytics.conversionMetrics && (
+      Number(analytics.conversionMetrics.conversionRate) > 0 ||
+      Number(analytics.conversionMetrics.orderCompletionRate) > 0 ||
+      Number(analytics.conversionMetrics.revenuePerUser) > 0 ||
+      Number(analytics.conversionMetrics.avgItemsPerOrder) > 0
+    ))
+  );
+
   return (
     <div className="admin-v2">
       <header className="admin-top">
@@ -374,10 +386,10 @@ export default function AdminDashboard() {
 
       {activeTab === 'Overview' && (
         <main className="overview">
-      <section className="stats-cards">
+          <section className="stats-cards">
             <div className="stat">
               <small>Total Revenue</small>
-        <div className="value">{formatCurrency(totalRevenue)}</div>
+              <div className="value">{formatCurrency(totalRevenue)}</div>
               <div className="delta positive">+12.5%</div>
             </div>
             <div className="stat">
@@ -402,34 +414,36 @@ export default function AdminDashboard() {
             </div>
           </section>
 
-          {/* Conversion Metrics Section */}
-          <section className="stats-cards">
-            <div className="stat">
-              <small>Conversion Rate</small>
-              <div className="value">{conversionMetrics.conversionRate}%</div>
-              <div className="muted">Orders per user</div>
-            </div>
-            <div className="stat">
-              <small>Avg Order Value</small>
-              <div className="value">{formatCurrency(analytics?.avgOrderValue || 0)}</div>
-              <div className="muted">Per order</div>
-            </div>
-            <div className="stat">
-              <small>Revenue per User</small>
-              <div className="value">{formatCurrency(conversionMetrics.revenuePerUser)}</div>
-              <div className="muted">Average</div>
-            </div>
-            <div className="stat">
-              <small>Items per Order</small>
-              <div className="value">{conversionMetrics.avgItemsPerOrder}</div>
-              <div className="muted">Average</div>
-            </div>
-            <div className="stat">
-              <small>Completion Rate</small>
-              <div className="value">{conversionMetrics.orderCompletionRate}%</div>
-              <div className="muted">Paid orders</div>
-            </div>
-          </section>
+          {/* Conversion Metrics Section - only show when there's real data */}
+          {hasAnalyticsData && (
+            <section className="stats-cards">
+              <div className="stat">
+                <small>Conversion Rate</small>
+                <div className="value">{conversionMetrics.conversionRate}%</div>
+                <div className="muted">Orders per user</div>
+              </div>
+              <div className="stat">
+                <small>Avg Order Value</small>
+                <div className="value">{formatCurrency(analytics?.avgOrderValue || 0)}</div>
+                <div className="muted">Per order</div>
+              </div>
+              <div className="stat">
+                <small>Revenue per User</small>
+                <div className="value">{formatCurrency(conversionMetrics.revenuePerUser)}</div>
+                <div className="muted">Average</div>
+              </div>
+              <div className="stat">
+                <small>Items per Order</small>
+                <div className="value">{conversionMetrics.avgItemsPerOrder}</div>
+                <div className="muted">Average</div>
+              </div>
+              <div className="stat">
+                <small>Completion Rate</small>
+                <div className="value">{conversionMetrics.orderCompletionRate}%</div>
+                <div className="muted">Paid orders</div>
+              </div>
+            </section>
+          )}
 
           {lowStock.length > 0 && (
             <section className="low-stock">
