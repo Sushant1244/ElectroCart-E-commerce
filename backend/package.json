@@ -8,7 +8,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "dev:nodemon": "nodemon server.js",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
     "seed:pg": "node seed_pg.js",
     "migrate:create-reviews": "node scripts/create_reviews_table.js",
     "migrate:cleanup-notifications": "node scripts/cleanup_old_notifications_migration.js",
