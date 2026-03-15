@@ -5,11 +5,7 @@ const path = require('node:path');
 const { DataTypes } = require('sequelize');
 const app = express();
 
-// Vercel serverless support - export express app directly
-// The @vercel/node runtime handles express apps natively
 
-// Safety check: do not allow ALLOW_UNVERIFIED_ORDERS in production
-// Wrap in try-catch to prevent module load crashes
 try {
   if (process.env.NODE_ENV === 'production' && (process.env.ALLOW_UNVERIFIED_ORDERS || '').toLowerCase() === 'true') {
     console.error('ALERT: ALLOW_UNVERIFIED_ORDERS=true is not permitted in production. Disable this flag and restart.');
@@ -43,7 +39,10 @@ let pgProductsRouter = null;
 // In Vercel, we still need to try connecting for serverless functions to work.
 // Wrap in try-catch to prevent module load crashes
 try {
-  if (require.main === module || process.env.VERCEL === '1') {
+  // Check if we're in test mode - don't connect to DB during tests
+  const isTestMode = process.env.NODE_ENV === 'test';
+  
+  if ((require.main === module || process.env.VERCEL === '1') && !isTestMode) {
     // If Sequelize/PG is configured, attempt to authenticate and optionally sync schema
     if (pgConfig && pgConfig.sequelize) {
       const { sequelize } = pgConfig;
@@ -293,6 +292,7 @@ if (isProduction) {
     });
   }
 } else {
+  // Development or test mode: simple API response
   app.get('/', (req, res) => res.send('API running'));
 }
 
@@ -353,7 +353,8 @@ if (isVercel) {
 
 // Background jobs: notification cleanup
 // Only schedule background timers when the server is started directly (not imported by tests)
-if (require.main === module && process.env.NODE_ENV !== 'test') {
+const isTestMode = process.env.NODE_ENV === 'test';
+if (require.main === module && !isTestMode) {
   try {
     const NOTIF_CLEANUP_ENABLED = (process.env.NOTIF_CLEANUP_ENABLED || 'true') === 'true';
     // Parse numeric env vars and validate/fallbacks to safe defaults if invalid
