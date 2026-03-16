@@ -2,8 +2,19 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { createOrder, getMyOrders, getAllOrders, updateOrderStatus, getOrderTracking, cancelOrder, uploadProof } = require('../controllers/orderController');
+
+// Ensure uploads/proofs directory exists
+const proofsDir = path.join(__dirname, '..', 'uploads', 'proofs');
+try {
+  if (!fs.existsSync(proofsDir)) {
+    fs.mkdirSync(proofsDir, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Could not create proofs directory:', e?.message);
+}
 
 // configure multer storage for payment proofs (kept under uploads/proofs)
 const proofStorage = multer.diskStorage({

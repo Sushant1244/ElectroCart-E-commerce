@@ -4,7 +4,16 @@
   adapter methods will be present but return null or empty arrays where appropriate.
 */
 const pgConfig = require('../config/sequelize');
-const { Op } = require('sequelize');
+// Only require sequelize if pgConfig is available to avoid crashes in serverless environments
+let Op;
+if (pgConfig) {
+  try {
+    const sequelize = require('sequelize');
+    Op = sequelize.Op;
+  } catch (e) {
+    console.warn('Failed to load sequelize Op:', e?.message);
+  }
+}
 
 const adapter = {};
 

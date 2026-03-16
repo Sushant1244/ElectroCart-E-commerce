@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('node:path');
+const fs = require('fs');
 const { DataTypes } = require('sequelize');
 const app = express();
 
@@ -210,7 +211,16 @@ app.use((req, res, next) => {
 });
 
 // Serve uploaded files from /uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Ensure uploads directory exists
+const uploadsPath = path.join(__dirname, 'uploads');
+try {
+  if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Could not create uploads directory:', e?.message);
+}
+app.use('/uploads', express.static(uploadsPath));
 
 // Mount API routes BEFORE the catch-all for frontend
 // This is critical: API routes must be handled before the React router catch-all
