@@ -4,7 +4,7 @@ exports.add = async (req, res) => {
   try {
     const userId = req.user && (req.user._id || req.user.id) || null;
     const { productId, quantity = 1, sessionId, meta } = req.body || {};
-    if (!productId) return res.status(400).json({ message: 'productId required' });
+    if (!productId) return res.status(400).json({ message: ' productId required' });
     const created = await adapter.CartItem.create({ userId, productId, quantity, sessionId: sessionId || null, meta: meta || null });
     return res.status(201).json(created);
   } catch (e) { console.error(e); return res.status(500).json({ message: 'failed' }); }
