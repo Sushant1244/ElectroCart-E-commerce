@@ -343,30 +343,36 @@ if (pgConfig && pgConfig.Product) {
     findByIdAndUpdate: async () => null,
   };
 
-  // Review adapter
+  // Review adapter stub - only available if pgConfig.Review exists
+  const PgReview = pgConfig && pgConfig.Review;
   adapter.Review = {
     findAll: async (query = {}) => {
+      if (!PgReview) return [];
       const rows = await PgReview.findAll({ where: query, order: [['createdAt', 'DESC']] });
       return rows.map(r => { const o = r.toJSON(); o._id = o.id; return o; });
     },
     findById: async (id) => {
+      if (!PgReview) return null;
       const inst = await PgReview.findByPk(id);
       if (!inst) return null;
       const obj = inst.toJSON(); obj._id = obj.id; return obj;
     },
     findByIdAndUpdate: async (id, update) => {
+      if (!PgReview) return null;
       const inst = await PgReview.findByPk(id);
       if (!inst) return null;
       await inst.update(update);
       await inst.reload(); const obj = inst.toJSON(); obj._id = obj.id; return obj;
     },
     findByIdAndDelete: async (id) => {
+      if (!PgReview) return { success: true };
       const inst = await PgReview.findByPk(id);
       if (!inst) return null;
       await inst.destroy();
       return { success: true };
     },
     count: async (query = {}) => {
+      if (!PgReview) return 0;
       return await PgReview.count({ where: query });
     }
   };
