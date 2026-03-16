@@ -1,4 +1,7 @@
 const adapter = require('../models/adapter');
+const pgConfig = require('../config/sequelize');
+let Op;
+try { Op = require('sequelize').Op; } catch (e) { /* ignore */ }
 
 // GET /api/users - List all users (admin only)
 exports.listUsers = async (req, res) => {
@@ -10,9 +13,17 @@ exports.listUsers = async (req, res) => {
     
     // Search by name or email
     if (search) {
-      query[require('sequelize').Op.or] = [
-        { name: { [require('sequelize').Op.iLike]: `%${search}%` } },
-        { email: { [require('sequelize').Op.iLike]: `%${search}%` } }
+      if (!pgConfig || !pgConfig.User) {
+        return res.status(503).json({ success: false, message: 'Database not configured' });
+      }
+      if (!Op) {
+        try { Op = require('sequelize').Op; } catch (e) {
+          return res.status(503).json({ success: false, message: 'Sequelize not available' });
+        }
+      }
+      query[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
       ];
     }
     
@@ -30,7 +41,10 @@ exports.listUsers = async (req, res) => {
       query.emailVerified = false;
     }
     
-    const { User } = require('../config/sequelize');
+    const { User } = pgConfig || {};
+    if (!User) {
+      return res.status(503).json({ success: false, message: 'Database not configured' });
+    }
     const { count, rows } = await User.findAndCountAll({
       where: query,
       attributes: { exclude: ['passwordHash'] },
@@ -69,7 +83,10 @@ exports.getUser = async (req, res) => {
     }
     
     // Get additional stats for the user
-    const { Order } = require('../config/sequelize');
+    if (!pgConfig || !pgConfig.Order) {
+      return res.status(503).json({ success: false, message: 'Database not configured' });
+    }
+    const { Order } = pgConfig;
     const orderCount = await Order.count({ where: { userId: id } });
     
     res.json({
@@ -120,7 +137,10 @@ exports.deleteUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
     }
     
-    const { User } = require('../config/sequelize');
+    const { User } = pgConfig || {};
+    if (!User) {
+      return res.status(503).json({ success: false, message: 'Database not configured' });
+    }
     const user = await User.findByPk(id);
     
     if (!user) {
@@ -139,7 +159,10 @@ exports.deleteUser = async (req, res) => {
 // GET /api/users/stats - Get user statistics (admin only)
 exports.getUserStats = async (req, res) => {
   try {
-    const { User } = require('../config/sequelize');
+    if (!pgConfig || !pgConfig.User) {
+      return res.status(503).json({ success: false, message: 'Database not configured' });
+    }
+    const { User } = pgConfig;
     
     const totalUsers = await User.count();
     const adminUsers = await User.count({ where: { isAdmin: true } });
@@ -149,7 +172,10 @@ exports.getUserStats = async (req, res) => {
     // Users created in last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const newUsers = await User.count({ where: { createdAt: { [require('sequelize').Op.gte]: thirtyDaysAgo } } });
+    if (!Op) {
+      try { Op = require('sequelize').Op; } catch (e) { /* ignore */ }
+    }
+    const newUsers = await User.count({ where: { createdAt: { [Op.gte]: thirtyDaysAgo } } });
     
     res.json({
       success: true,
