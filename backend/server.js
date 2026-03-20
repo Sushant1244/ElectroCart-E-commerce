@@ -262,8 +262,12 @@ if (isProduction) {
     path.join(process.cwd(), 'dist'),
     path.join(__dirname, '..', 'frontend', 'dist'),
     path.join(__dirname, '..', '..', 'frontend', 'dist'),
+    path.join(__dirname, '..', '..', '..', 'frontend', 'dist'),
     path.join(__dirname, 'dist'),
-    path.join(__dirname, '..', 'dist')
+    path.join(__dirname, '..', 'dist'),
+    // Vercel serverless function paths
+    path.join('/var/task', 'frontend', 'dist'),
+    path.join('/var/task', 'dist')
   ];
   
   let frontendDistPath = null;
@@ -294,6 +298,17 @@ if (isProduction) {
   // Also serve uploads from frontend dist (Vite copies public folder to dist)
   if (frontendDistPath) {
     app.use('/uploads', express.static(path.join(frontendDistPath, 'uploads')));
+  }
+  
+  // Fallback: also try direct var/task paths for Vercel
+  const varTaskUploadsPath = '/var/task/frontend/dist/uploads';
+  try {
+    if (require('fs').existsSync(varTaskUploadsPath)) {
+      app.use('/uploads', express.static(varTaskUploadsPath));
+      console.log('Serving uploads from:', varTaskUploadsPath);
+    }
+  } catch (e) {
+    // ignore
   }
   
   if (frontendDistPath) {
