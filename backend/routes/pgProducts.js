@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (pg) => {
+  // Handle case where pg is null (no Postgres configured)
+  if (!pg || !pg.Product) {
+    const router = require('express').Router();
+    router.get('/', (req, res) => res.status(503).json({ message: 'PostgreSQL not configured' }));
+    return router;
+  }
   const { Product } = pg;
 
   router.get('/', async (req, res) => {

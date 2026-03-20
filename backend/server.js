@@ -104,8 +104,11 @@ try {
       })();
 
       try {
-        const pgProductsFactory = require('./routes/pgProducts');
-        pgProductsRouter = pgProductsFactory(pgConfig);
+        // Only load PG routes if pgConfig has a valid sequelize instance
+        if (pgConfig && pgConfig.sequelize) {
+          const pgProductsFactory = require('./routes/pgProducts');
+          pgProductsRouter = pgProductsFactory(pgConfig);
+        }
       } catch (err) {
         console.error('Failed to load PG routes', err.message);
       }

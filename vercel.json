@@ -5,7 +5,7 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "outputDirectory": "dist",
+        "outputDirectory": "frontend/dist",
         "buildCommand": "npm run vercel-build"
       }
     },
@@ -26,9 +26,6 @@
     {
       "src": "/uploads/(.*)",
       "dest": "backend/server.js"
-    },
-    {
-      "handle": "filesystem"
     },
     {
       "src": "/(.*)",

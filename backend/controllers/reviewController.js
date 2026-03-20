@@ -1,5 +1,6 @@
 const adapter = require('../models/adapter');
-const { Product: PgProduct } = require('../config/sequelize');
+const pgConfig = require('../config/sequelize');
+const { Product: PgProduct } = pgConfig || {};
 
 // GET /api/reviews - List all reviews (admin only)
 exports.listReviews = async (req, res) => {
@@ -19,7 +20,10 @@ exports.listReviews = async (req, res) => {
       query.rating = parseInt(rating);
     }
     
-    const { Review } = require('../config/sequelize');
+    const { Review } = pgConfig || {};
+    if (!Review) {
+      return res.status(503).json({ success: false, message: 'Database not configured' });
+    }
     
     let order = [['createdAt', 'DESC']];
     if (sortBy === 'rating-desc') {
@@ -33,9 +37,9 @@ exports.listReviews = async (req, res) => {
       limit: parseInt(limit),
       offset,
       order,
-      include: [
+      include: PgProduct ? [
         { model: PgProduct, as: 'product', attributes: ['id', 'name', 'slug'] }
-      ]
+      ] : []
     });
     
     const reviews = rows.map(r => {
@@ -60,14 +64,20 @@ exports.listReviews = async (req, res) => {
 // GET /api/reviews/stats - Get review statistics (admin only)
 exports.getReviewStats = async (req, res) => {
   try {
-    const { Review, Product } = require('../config/sequelize');
+    if (!pgConfig || !pgConfig.Review) {
+      return res.status(503).json({ success: false, message: 'Database not configured' });
+    }
+    const { Review, Product } = pgConfig;
+    
+    let avgRatingFn;
+    try { avgRatingFn = require('sequelize').fn; } catch (e) { /* ignore */ }
     
     const totalReviews = await Review.count();
-    const avgRating = await Review.findOne({
+    const avgRating = avgRatingFn ? await Review.findOne({
       attributes: [
-        [require('sequelize').fn('AVG', require('sequelize').col('rating')), 'avgRating']
+        [avgRatingFn('AVG', require('sequelize').col('rating')), 'avgRating']
       ]
-    });
+    }) : null;
     
     const ratingDistribution = {};
     for (let i = 1; i <= 5; i++) {
@@ -105,12 +115,33 @@ exports.getReview = async (req, res) => {
     }
     
     // Get product info
+    if (!PgProduct) {
+      return res.json({
+        success: true,
+        review: {
+          ...review,
+          product: null,
+          user: null
+        }
+      });
+    }
     const product = await PgProduct.findByPk(review.productId, {
       attributes: ['id', 'name', 'slug']
     });
     
     // Get user info
-    const { User } = require('../config/sequelize');
+    if (!pgConfig || !pgConfig.User) {
+      // Skip user info if database not configured
+      return res.json({
+        success: true,
+        review: {
+          ...review,
+          product: product ? { id: product.id, name: product.name, slug: product.slug } : null,
+          user: null
+        }
+      });
+    }
+    const { User } = pgConfig;
     const user = await User.findByPk(review.userId, {
       attributes: ['id', 'name', 'email']
     });
