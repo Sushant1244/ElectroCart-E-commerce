@@ -1,6 +1,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
 
-const POSTGRES_URL = process.env.POSTGRES_URL || process.env.DATABASE_URL || null;
+const POSTGRES_URL = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.VERCEL_POSTGRES_URL || null;
 
 if (!POSTGRES_URL) {
   // No Postgres configured — export null so callers can gracefully fall back.
