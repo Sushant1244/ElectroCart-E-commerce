@@ -10,7 +10,9 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     chunkSizeWarningLimit: 1000,
+    copyPublicDir: true,
   },
+  publicDir: 'public',
   server: {
     // Bind to IPv4 localhost to avoid IPv6-only binding issues on some macOS setups
     host: '127.0.0.1',

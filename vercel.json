@@ -25,11 +25,18 @@
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "backend/server.js"
+      "dest": "frontend/dist/uploads/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "backend/server.js"
+      "dest": "frontend/dist/$1"
+    },
+    {
+      "handle": "/"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
